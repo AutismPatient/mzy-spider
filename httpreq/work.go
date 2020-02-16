@@ -19,6 +19,7 @@ var (
 	defaultHome  = "index/home.html"
 )
 
+// 下载专区
 func init() {
 
 }
@@ -121,7 +122,7 @@ func Run(addr string) {
 			if v, ok := ret.RowsAffected(); ok != nil || v <= 0 {
 				log.Println("[写入数据库失败]:", ok.Error())
 			}
-			fmt.Println("Write -> " + title + "succeed")
+			fmt.Println("Write -> " + title)
 		} else if exist == 0 && ID > 0 {
 			ret, err := mysqlDB.Exec("UPDATE movie_info SET title=?,html_url=?,dateline=?,video_url=?,thunder_url=?,finish=1 WHERE ID=?", title, htmlURL, time.Now().Unix(), video0DownLoad, video1DownLoad, ID)
 			if err != nil {
@@ -130,11 +131,12 @@ func Run(addr string) {
 			if v, ok := ret.RowsAffected(); ok != nil || v <= 0 {
 				log.Println("[写入数据库失败]:", ok.Error())
 			}
-			fmt.Println("Update -> " + title + "succeed")
+			fmt.Println("Update -> " + title)
 		}
 	})
 	c.Visit(addr)
 }
+
 func containsKey(str string) bool {
 	if str != "" {
 		for _, v := range DownLoadUrls {
