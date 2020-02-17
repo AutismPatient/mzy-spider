@@ -1,9 +1,12 @@
 package until
 
 import (
+	"bytes"
 	"crypto/md5"
+	"encoding/json"
 	"fmt"
 	"gopkg.in/gomail.v2"
+	"net/http"
 	"strconv"
 	"time"
 )
@@ -45,7 +48,7 @@ func SendEmail(mailTo []string, subject string, body string) error {
 	port, _ := strconv.Atoi(mailConn["port"])
 
 	m := gomail.NewMessage()
-	m.SetHeader("From", "程序启动秘钥"+"<"+mailConn["user"]+">")
+	m.SetHeader("From", "RUN KEY"+"<"+mailConn["user"]+">")
 	m.SetHeader("To", mailTo...)
 	m.SetHeader("Subject", subject)
 	m.SetBody("text/html", body)
@@ -54,4 +57,17 @@ func SendEmail(mailTo []string, subject string, body string) error {
 
 	err := d.DialAndSend(m)
 	return err
+}
+func Json(resp http.ResponseWriter, data interface{}) {
+	buffer := &bytes.Buffer{}
+	encoder := json.NewEncoder(buffer)
+	encoder.SetEscapeHTML(false)
+	err := encoder.Encode(data)
+	if err != nil {
+		panic(err)
+	}
+	resp.Header().Add("Access-Control-Allow-Origin", "*")
+	resp.Header().Set("Content-Type", "application/json")
+
+	resp.Write(buffer.Bytes())
 }

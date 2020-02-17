@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Thunder -- 批量下载资源 DownLoad Task</title>
+    <link href="http://apps.bdimg.com/libs/bootstrap/3.3.0/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+<div class="container" style="padding-top: 20px;">
+    <div class="panel panel-primary">
+        <div class="panel-heading">批量下载</div>
+        <div class="panel-body">
+            <div class="form-group">
+                <label for="url" class="text-danger">后台配置地址（*请填写启动秘钥）</label>
+                <input class="form-control" id="config-json-url" type="text" value="http://localhost:8888/download/run?run_key=" placeholder="请输入后台配置下载资源">
+            </div>
+            <button class="btn btn-primary btn-block" id="config-json-task" type="submit">从后台配置下载资源</button>
+        </div>
+    </div>
+</div>
+<script src="//open.thunderurl.com/thunder-link.js" ></script>
+<script>
+    thunderLink();
+    jq('#config-json-task').click(function () {
+        var json = jq('#config-json-url').val();
+        thunderLink.newTask({
+            minVersion: '',
+            thunderInstallPack: '',
+            taskGroupName: '',
+            json: json,
+            referer: ''
+        });
+    });
+</script>
+</body>
+</html>

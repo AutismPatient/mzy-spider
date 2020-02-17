@@ -6,7 +6,10 @@ import (
 	"fmt"
 	"github.com/gocolly/colly"
 	"log"
+	"mzy-spider/model"
 	"mzy-spider/stock"
+	"mzy-spider/until"
+	"net/http"
 	"strconv"
 	"strings"
 	"time"
@@ -21,11 +24,11 @@ var (
 	IsNext        = false
 )
 
-// 猫咪视频资源(所有)
 func init() {
 
 }
 
+// 猫咪视频资源(所有)
 func Run(addr string) {
 	if addr == "" {
 		panic(errors.New("string empty"))
@@ -174,4 +177,56 @@ func containsKey(str string) bool {
 		}
 	}
 	return false
+}
+
+// 批量下载迅雷X
+func DownloadVideo(resp http.ResponseWriter, PageSize int64) {
+	if PageSize == 0 {
+		PageSize = 5
+	}
+	var (
+		mysqlDB = stock.ActionMysql.Db
+		task    = model.Thunder{
+			MinVersion:         "10.0.1.0",
+			TaskGroupName:      "视频资源",
+			ThreadCount:        10,
+			ThunderInstallPack: "http://down.sandai.net/thunderx/XunLeiSetup10.1.1.148Beta.exe",
+		}
+		ids []string
+	)
+	rows, err := mysqlDB.Query("SELECT id,thunder_url,title,video_url FROM movie_info WHERE is_down=0 LIMIT ?", PageSize)
+	if err != nil && err != sql.ErrNoRows {
+		panic(err.Error())
+	}
+	for rows.Next() {
+		id := int64(0)
+		url := ""
+		m := model.Task{}
+		err = rows.Scan(&id, &m.Url, &m.Name, &url)
+		if err != nil {
+			log.Println(err.Error())
+			continue
+		}
+		if strings.Contains(url, "rmvb") {
+			m.Name = m.Name + ".rmvb"
+		} else {
+			m.Name = m.Name + ".mp4"
+		}
+		ids = append(ids, strconv.Itoa(int(id)))
+		task.Tasks = append(task.Tasks, m)
+	}
+	rows.Close()
+
+	if len(ids) > 0 {
+		str := fmt.Sprintf("UPDATE movie_info SET is_down=1 WHERE id IN(%s)", strings.Join(ids, ","))
+		ret, err := mysqlDB.Exec(str)
+		if err != nil {
+			panic(err.Error())
+		}
+		if v, ok := ret.RowsAffected(); ok != nil || v <= 0 {
+			log.Println("[写入数据库失败]:", ok.Error())
+		}
+	}
+
+	until.Json(resp, task)
 }
