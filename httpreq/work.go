@@ -13,13 +13,15 @@ import (
 )
 
 var (
-	defaultJS    = "assets/js/custom/config.js"
-	DownLoadUrls = []string{"亚洲电影", "欧美电影", "制服丝袜", "强奸乱伦", "国产自拍", "变态另类", "经典三级", "成人动漫"}
-	NewURL       = ""
-	defaultHome  = "index/home.html"
+	defaultJS     = "assets/js/custom/config.js"
+	DownLoadUrls  = []string{"亚洲电影", "欧美电影", "制服丝袜", "强奸乱伦", "国产自拍", "变态另类", "经典三级", "成人动漫"} // 下载专区 菜单
+	VideoMenuList = []string{"亚洲无码", "女优专辑", "短视频", "国产精品", "中文字幕", "欧美精品", "成人动漫"}          // 在线视频 菜单
+	NewURL        = ""
+	defaultHome   = "index/home.html"
+	IsNext        = false
 )
 
-// 下载专区
+// 猫咪视频资源(所有)
 func init() {
 
 }
@@ -70,10 +72,22 @@ func Run(addr string) {
 	})
 	// 获取菜单链接
 	videoColly.OnHTML("ul.row-item-content > li > a", func(htmlElement *colly.HTMLElement) {
-		var url = htmlElement.Attr("href")
-		var text = strings.ReplaceAll(htmlElement.Text, " ", "")
+		var (
+			url  = htmlElement.Attr("href")
+			text = strings.ReplaceAll(htmlElement.Text, " ", "")
+			host = htmlElement.Request.URL.Scheme + "://" + htmlElement.Request.URL.Host
+		)
+		// 单独获取在线资源
+		if !IsNext {
+			for _, v := range VideoMenuList {
+				t := fmt.Sprintf("/shipin/list-%s.html", v)
+				pageSizeColly.Visit(host + t)
+			}
+		}
+		IsNext = true
+
 		if containsKey(text) {
-			pageSizeColly.Visit(htmlElement.Request.URL.Scheme + "://" + htmlElement.Request.URL.Host + url)
+			pageSizeColly.Visit(host + url)
 		}
 	})
 	// 获取分页列表
@@ -86,54 +100,68 @@ func Run(addr string) {
 			videoListColly.Visit(url)
 		}
 	})
-	// 获取最终链接
+	// 获取链接
 	videoListColly.OnHTML("#tpl-img-content > li > a", func(htmlElement *colly.HTMLElement) {
 		var url = htmlElement.Attr("href")
 		videoDetailColly.Visit(htmlElement.Request.URL.Scheme + "://" + htmlElement.Request.URL.Host + url)
 	})
+	videoListColly.OnHTML("#grid > li > a", func(htmlElement *colly.HTMLElement) {
+		var url = htmlElement.Attr("href")
+		videoDetailColly.Visit(htmlElement.Request.URL.Scheme + "://" + htmlElement.Request.URL.Host + url)
+	})
+
+	// 女优专区链接
+	videoDetailColly.OnHTML("#tpl-img-content > li > a", func(element *colly.HTMLElement) {
+		var url = element.Attr("href")
+		videoDetailColly.Visit(element.Request.URL.Scheme + "://" + element.Request.URL.Host + url)
+	})
 
 	// 获取视频详情
 	videoDetailColly.OnHTML("#main-container", func(htmlElement *colly.HTMLElement) {
-		down0Query := htmlElement.DOM.Find("#lin1k0")
-		down1Query := htmlElement.DOM.Find("#lin1k1")
-		titleQuery := htmlElement.DOM.Find(".row > h2")
-		var (
-			mysqlDB           = stock.ActionMysql.Db
-			video0DownLoad, _ = down0Query.Attr("value")
-			video1DownLoad, _ = down1Query.Attr("value")
-			title             = titleQuery.Text()
-			htmlURL           = htmlElement.Request.URL.String()
-			exist             = int64(0)
-			ID                = int64(0)
-		)
-		err := mysqlDB.QueryRow("SELECT finish,id FROM movie_info WHERE html_url=? GROUP BY id", htmlURL).Scan(&exist, &ID)
-		if err != nil && err != sql.ErrNoRows {
-			panic(err)
-		}
-		if ID == 0 {
-			finish := 1
-			if video0DownLoad == "" || video1DownLoad == "" || title == "" || htmlURL == "" {
-				finish = 0
+		if selection := htmlElement.DOM.Find("#tpl-img-content"); len(selection.Nodes) > 0 { // 女优专区
+		} else {
+			down0Query := htmlElement.DOM.Find("#lin1k0")
+			down1Query := htmlElement.DOM.Find("#lin1k1")
+			titleQuery := htmlElement.DOM.Find(".row > h2")
+			var (
+				mysqlDB           = stock.ActionMysql.Db
+				video0DownLoad, _ = down0Query.Attr("value")
+				video1DownLoad, _ = down1Query.Attr("value")
+				title             = titleQuery.Text()
+				htmlURL           = htmlElement.Request.URL.String()
+				exist             = int64(0)
+				ID                = int64(0)
+			)
+			err := mysqlDB.QueryRow("SELECT finish,id FROM movie_info WHERE html_url=? GROUP BY id", htmlURL).Scan(&exist, &ID)
+			if err != nil && err != sql.ErrNoRows {
+				panic(err)
 			}
-			ret, err := mysqlDB.Exec("INSERT movie_info SET title=?,html_url=?,dateline=?,video_url=?,thunder_url=?,finish=?,is_down=0", title, htmlURL, time.Now().Unix(), video0DownLoad, video1DownLoad, finish)
-			if err != nil {
-				panic(err.Error())
+			if ID == 0 {
+				finish := 1
+				if video0DownLoad == "" || video1DownLoad == "" || title == "" || htmlURL == "" {
+					finish = 0
+				}
+				ret, err := mysqlDB.Exec("INSERT movie_info SET title=?,html_url=?,dateline=?,video_url=?,thunder_url=?,finish=?,is_down=0", title, htmlURL, time.Now().Unix(), video0DownLoad, video1DownLoad, finish)
+				if err != nil {
+					panic(err.Error())
+				}
+				if v, ok := ret.RowsAffected(); ok != nil || v <= 0 {
+					log.Println("[写入数据库失败]:", ok.Error())
+				}
+				fmt.Println("Write -> " + title)
+			} else if exist == 0 && ID > 0 {
+				ret, err := mysqlDB.Exec("UPDATE movie_info SET title=?,html_url=?,dateline=?,video_url=?,thunder_url=?,finish=1 WHERE ID=?", title, htmlURL, time.Now().Unix(), video0DownLoad, video1DownLoad, ID)
+				if err != nil {
+					panic(err.Error())
+				}
+				if v, ok := ret.RowsAffected(); ok != nil || v <= 0 {
+					log.Println("[写入数据库失败]:", ok.Error())
+				}
+				fmt.Println("Update -> " + title)
 			}
-			if v, ok := ret.RowsAffected(); ok != nil || v <= 0 {
-				log.Println("[写入数据库失败]:", ok.Error())
-			}
-			fmt.Println("Write -> " + title)
-		} else if exist == 0 && ID > 0 {
-			ret, err := mysqlDB.Exec("UPDATE movie_info SET title=?,html_url=?,dateline=?,video_url=?,thunder_url=?,finish=1 WHERE ID=?", title, htmlURL, time.Now().Unix(), video0DownLoad, video1DownLoad, ID)
-			if err != nil {
-				panic(err.Error())
-			}
-			if v, ok := ret.RowsAffected(); ok != nil || v <= 0 {
-				log.Println("[写入数据库失败]:", ok.Error())
-			}
-			fmt.Println("Update -> " + title)
 		}
 	})
+
 	c.Visit(addr)
 }
 

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"github.com/gomodule/redigo/redis"
 	"log"
 	"mzy-spider/httpreq"
@@ -11,7 +10,7 @@ import (
 	"time"
 )
 
-func handler(resp http.ResponseWriter, req *http.Request) {
+func workHandle(resp http.ResponseWriter, req *http.Request) {
 	if req.Method == http.MethodGet {
 		var (
 			mysqlDB = stock.ActionMysql.Db
@@ -30,7 +29,7 @@ func handler(resp http.ResponseWriter, req *http.Request) {
 			log.Println("[写入数据库失败]:", ok.Error())
 		}
 
-		httpreq.Run("https://www.maomiav.com/")
+		defer httpreq.Run("https://www.maomiav.com/")
 
 		ret, err = mysqlDB.Exec("UPDATE runtime SET is_run=? WHERE run_key=?", 0, runKey)
 		if err != nil {
@@ -39,8 +38,8 @@ func handler(resp http.ResponseWriter, req *http.Request) {
 		if v, ok := ret.RowsAffected(); ok != nil || v <= 0 {
 			log.Println("[写入数据库失败]:", ok.Error())
 		}
-		log.Println("任务执行完毕")
-		resp.Write([]byte("end of run"))
+		resp.Write([]byte("Task begins"))
+		return
 	}
 	resp.WriteHeader(404)
 }
@@ -50,7 +49,7 @@ func main() {
 	addr := ":8888"
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("/program/run", handler)
+	mux.HandleFunc("/program/run", workHandle)
 
 	srv := &http.Server{
 		Addr:           addr,
@@ -60,17 +59,19 @@ func main() {
 		MaxHeaderBytes: 1 << 20,
 		IdleTimeout:    5 * time.Second,
 	}
+	token := until.GenerateToken(0)
+	_, err := stock.Redis.Do("set", "run_key", token)
+	if err != nil {
+		panic(err)
+	}
 
-	err := srv.ListenAndServe()
+	err = until.SendEmail([]string{"1010014622@qq.com", "1746793113@qq.com"}, "run_key", token)
 
 	if err != nil {
 		panic(err)
 	}
 
-	_, err = stock.Redis.Do("set", "run_key", until.GenerateToken(0))
-	if err != nil {
-		panic(err)
-	}
+	until.PrintlnMsg(false, true, time.Now().Format("2006-01-02 15:04:05")+" 站点初始化成功，秘钥已更新")
 
-	fmt.Println(time.Now().Format("2006-05-04 15:30:03"), "站点初始化成功")
+	log.Fatal(srv.ListenAndServe())
 }
