@@ -36,6 +36,7 @@ func Run(addr string) {
 	c := colly.NewCollector(
 		colly.UserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.130 Safari/537.36"),
 	)
+	c.SetRequestTimeout(5 * time.Second)
 	// 生成新的操作对象
 	videoColly, videoListColly, pageSizeColly, videoDetailColly := c.Clone(), c.Clone(), c.Clone(), c.Clone()
 
@@ -48,6 +49,9 @@ func Run(addr string) {
 	c.OnRequest(func(r *colly.Request) {
 		r.Ctx.Put("url", r.URL.String())
 		fmt.Println("Visiting", r.URL)
+	})
+	c.OnError(func(response *colly.Response, e error) {
+		until.PrintlnMsg(true, true, fmt.Sprintf("ERROR CODE : %d,%s,%s", response.StatusCode, response.Request.URL.String(), e.Error()))
 	})
 	c.OnResponse(func(response *colly.Response) {
 		if strings.Contains(response.Ctx.Get("url"), "assets") {
@@ -100,8 +104,10 @@ func Run(addr string) {
 			path := htmlElement.Request.URL.Path[0:strings.Index(htmlElement.Request.URL.Path, ".html")]
 			path = path + fmt.Sprintf("-%d.html", i)
 			url := htmlElement.Request.URL.Scheme + "://" + htmlElement.Request.URL.Host + path
+			t := time.Now()
 			videoListColly.Visit(url)
-			fmt.Println(url)
+			t1 := time.Now()
+			fmt.Println(url + fmt.Sprintf("%v", t1.Sub(t)))
 		}
 	})
 	// 获取链接
