@@ -105,9 +105,12 @@ func Run(addr string) {
 			path = path + fmt.Sprintf("-%d.html", i)
 			url := htmlElement.Request.URL.Scheme + "://" + htmlElement.Request.URL.Host + path
 			t := time.Now()
-			videoListColly.Visit(url)
+			err := videoListColly.Visit(url)
 			t1 := time.Now()
-			fmt.Println(url + fmt.Sprintf("%v", t1.Sub(t)))
+			fmt.Println(url + fmt.Sprintf(" -- %v", t1.Sub(t)))
+			if err != nil {
+				continue
+			}
 		}
 	})
 	// 获取链接
