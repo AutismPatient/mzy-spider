@@ -14,17 +14,29 @@
         <div class="panel-body">
             <div class="form-group">
                 <label for="url" class="text-danger">后台配置地址（*请填写启动秘钥）</label>
-                <input class="form-control" id="config-json-url" type="text" value="http://localhost:8888/download/run?run_key=" placeholder="请输入后台配置下载资源">
+                <input class="form-control" id="config-json-url" type="text"
+                       value="http://localhost:8888/download/run?run_key=" placeholder="请输入后台配置下载资源">
+            </div>
+            <div class="form-group">
+                <label for="menu" class="text-danger">所属菜单</label>
+                <input class="form-control" id="menu" type="text" value="" placeholder="">
             </div>
             <button class="btn btn-primary btn-block" id="config-json-task" type="submit">从后台配置下载资源</button>
         </div>
     </div>
 </div>
-<script src="//open.thunderurl.com/thunder-link.js" ></script>
+<script src="//open.thunderurl.com/thunder-link.js"></script>
 <script>
     thunderLink();
     jq('#config-json-task').click(function () {
         var json = jq('#config-json-url').val();
+        var menu = jq('#menu').val();
+        if (menu != '') {
+            menu = encodeURI(menu);
+            console.log(menu);
+            json = json + "&menu=" + menu;
+            console.log(json);
+        }
         thunderLink.newTask({
             minVersion: '',
             thunderInstallPack: '',

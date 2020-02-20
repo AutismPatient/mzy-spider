@@ -8,11 +8,12 @@ import (
 	"mzy-spider/stock"
 	"mzy-spider/until"
 	"net/http"
+	"net/url"
 	"strconv"
 	"time"
 )
 
-const IsUPDATEKEY = true //是否更新密钥,仅用于调试模式
+const IsUPDATEKEY = false //是否更新密钥,仅用于调试模式
 
 func workHandle(resp http.ResponseWriter, req *http.Request) {
 	if req.Method == http.MethodGet {
@@ -49,15 +50,17 @@ func workHandle(resp http.ResponseWriter, req *http.Request) {
 }
 func workDownLoadHandle(resp http.ResponseWriter, req *http.Request) {
 	var (
-		runKey  = req.URL.Query().Get("run_key")
-		size, _ = strconv.ParseInt(req.URL.Query().Get("page_size"), 0, 64)
+		runKey   = req.URL.Query().Get("run_key")
+		code0, _ = url.PathUnescape(req.URL.Query().Get("menu"))
+		size, _  = strconv.ParseInt(req.URL.Query().Get("page_size"), 0, 64)
 	)
+	menu := code0
 	rely, err := redis.String(stock.Redis.Do("GET", "run_key"))
 	if err != nil || runKey != rely {
 		resp.Write([]byte("INVALID PARAMETER VALUE"))
 		return
 	}
-	httpreq.DownloadVideo(resp, size)
+	httpreq.DownloadVideo(resp, size, menu)
 }
 func htmlDownLoadHandle(resp http.ResponseWriter, req *http.Request) {
 	t, err := template.ParseFiles("./html/download.html")

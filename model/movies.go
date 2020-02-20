@@ -10,4 +10,5 @@ type MovieInfo struct {
 	ThunderUrl   string `json:"thunder_url"`
 	Finish       int    `json:"finish"`
 	IsDown       int    `json:"is_down"`
+	Menu         string `json:"menu"`
 }
