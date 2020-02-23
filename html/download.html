@@ -33,9 +33,7 @@
         var menu = jq('#menu').val();
         if (menu != '') {
             menu = encodeURI(menu);
-            console.log(menu);
             json = json + "&menu=" + menu;
-            console.log(json);
         }
         thunderLink.newTask({
             minVersion: '',

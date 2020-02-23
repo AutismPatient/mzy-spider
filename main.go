@@ -13,7 +13,7 @@ import (
 	"time"
 )
 
-const IsUPDATEKEY = false //是否更新密钥,仅用于调试模式
+const IsUPDATEKEY = true //是否更新密钥,仅用于调试模式
 
 func workHandle(resp http.ResponseWriter, req *http.Request) {
 	if req.Method == http.MethodGet {
@@ -50,11 +50,10 @@ func workHandle(resp http.ResponseWriter, req *http.Request) {
 }
 func workDownLoadHandle(resp http.ResponseWriter, req *http.Request) {
 	var (
-		runKey   = req.URL.Query().Get("run_key")
-		code0, _ = url.PathUnescape(req.URL.Query().Get("menu"))
-		size, _  = strconv.ParseInt(req.URL.Query().Get("page_size"), 0, 64)
+		runKey  = req.URL.Query().Get("run_key")
+		menu, _ = url.PathUnescape(req.URL.Query().Get("menu"))
+		size, _ = strconv.ParseInt(req.URL.Query().Get("page_size"), 0, 64)
 	)
-	menu := code0
 	rely, err := redis.String(stock.Redis.Do("GET", "run_key"))
 	if err != nil || runKey != rely {
 		resp.Write([]byte("INVALID PARAMETER VALUE"))
