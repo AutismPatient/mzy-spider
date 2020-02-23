@@ -1,2 +1,2 @@
 # mzy-spider
-一个基于goquery的网络特定站点爬虫
+一个基于gocolly的网络特定站点爬虫..
