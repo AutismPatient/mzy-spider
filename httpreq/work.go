@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/gocolly/colly"
+	"github.com/gomodule/redigo/redis"
 	"log"
 	"mzy-spider/model"
 	"mzy-spider/stock"
@@ -23,10 +24,18 @@ var (
 	defaultHome   = "index/home.html"
 	IsNext        = false
 	Movie         = model.MovieInfo{}
+	IsPageNext    = false
 )
 
+// 加载一些数据配置
 func init() {
-
+	unix, err := redis.String(stock.Redis.Do("get", "next"))
+	if err != nil && err != redis.ErrNil {
+		panic(err)
+	}
+	if unix != "" {
+		IsPageNext = true
+	}
 }
 
 // 猫咪视频资源(所有)
@@ -102,17 +111,19 @@ func Run(addr string) {
 	pageSizeColly.OnHTML(".pagination > a:nth-last-child(4)", func(htmlElement *colly.HTMLElement) {
 		var pageSize, _ = strconv.ParseInt(htmlElement.Text, 0, 64)
 		for i := 1; i <= int(pageSize); i++ {
-			path := htmlElement.Request.URL.Path[0:strings.Index(htmlElement.Request.URL.Path, ".html")]
-			path = path + fmt.Sprintf("-%d.html", i)
-			url := htmlElement.Request.URL.Scheme + "://" + htmlElement.Request.URL.Host + path
-			t := time.Now()
-			err := videoListColly.Visit(url)
-			t1 := time.Now()
-			fmt.Println(url + fmt.Sprintf(" -- %v", t1.Sub(t)))
-			if err != nil {
-				fmt.Println(err.Error())
-				time.Sleep(1 * time.Second)
-				continue
+			if !IsPageNext {
+				path := htmlElement.Request.URL.Path[0:strings.Index(htmlElement.Request.URL.Path, ".html")]
+				path = path + fmt.Sprintf("-%d.html", i)
+				url := htmlElement.Request.URL.Scheme + "://" + htmlElement.Request.URL.Host + path
+				t := time.Now()
+				err := videoListColly.Visit(url)
+				t1 := time.Now()
+				fmt.Println(url + fmt.Sprintf(" -- %v", t1.Sub(t)))
+				if err != nil {
+					fmt.Println(err.Error())
+					time.Sleep(1 * time.Second)
+					continue
+				}
 			}
 		}
 	})
@@ -227,7 +238,7 @@ func containsKey(str string) bool {
 }
 
 // 批量下载迅雷X
-func DownloadVideo(resp http.ResponseWriter, PageSize int64, menu string) {
+func DownloadVideo(resp http.ResponseWriter, PageSize int64, menu, search string) {
 	if PageSize == 0 {
 		PageSize = 5
 	}
@@ -235,7 +246,8 @@ func DownloadVideo(resp http.ResponseWriter, PageSize int64, menu string) {
 		mysqlDB = stock.ActionMysql.Db
 		task    = model.Thunder{
 			MinVersion:         "10.0.1.0",
-			TaskGroupName:      fmt.Sprintf("视频资源(%d-%d)", time.Now().Month(), time.Now().Day()),
+			DownloadDir:        "视频资源",
+			TaskGroupName:      "",
 			ThreadCount:        10,
 			ThunderInstallPack: "http://down.sandai.net/thunderx/XunLeiSetup10.1.1.148Beta.exe",
 		}
@@ -244,6 +256,9 @@ func DownloadVideo(resp http.ResponseWriter, PageSize int64, menu string) {
 	)
 	if menu != "" {
 		where = fmt.Sprintf(" AND menu='%s'", menu)
+	}
+	if search != "" {
+		where = where + fmt.Sprintf(" AND MATCH(title) AGAINST('*%s*'IN BOOLEAN MODE)", search)
 	}
 	rows, err := mysqlDB.Query("SELECT id,thunder_url,title,video_url FROM movie_info WHERE is_down=0"+where+" LIMIT ?", PageSize)
 	if err != nil && err != sql.ErrNoRows {

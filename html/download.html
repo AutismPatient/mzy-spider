@@ -15,11 +15,19 @@
             <div class="form-group">
                 <label for="url" class="text-danger">后台配置地址（*请填写启动秘钥）</label>
                 <input class="form-control" id="config-json-url" type="text"
-                       value="http://localhost:8888/download/run?run_key=" placeholder="请输入后台配置下载资源">
+                       value="" placeholder="">
             </div>
             <div class="form-group">
                 <label for="menu" class="text-danger">所属菜单</label>
                 <input class="form-control" id="menu" type="text" value="" placeholder="">
+            </div>
+            <div class="form-group">
+                <label for="search" class="text-danger">搜索关键词</label>
+                <input class="form-control" id="search" type="text" value="" placeholder="">
+            </div>
+            <div class="form-group">
+                <label for="size" class="text-danger">下载条数</label>
+                <input class="form-control" id="size" type="number" value="" placeholder="">
             </div>
             <button class="btn btn-primary btn-block" id="config-json-task" type="submit">从后台配置下载资源</button>
         </div>
@@ -29,17 +37,26 @@
 <script>
     thunderLink();
     jq('#config-json-task').click(function () {
-        var json = jq('#config-json-url').val();
+        var url = "http://localhost:8888/download/run?run_key=";
+        var key = jq('#config-json-url').val();
+        var str = jq('#search').val();
+        var size = jq('#size').val();
+        url += key;
         var menu = jq('#menu').val();
         if (menu != '') {
             menu = encodeURI(menu);
-            json = json + "&menu=" + menu;
+            url = url + "&menu=" + menu;
         }
+        if (str != '') {
+            str = encodeURI(str);
+            url = url + "&q=" + str;
+        }
+        url = url + "&page_size=" + size;
         thunderLink.newTask({
             minVersion: '',
             thunderInstallPack: '',
             taskGroupName: '',
-            json: json,
+            json: url,
             referer: ''
         });
     });
