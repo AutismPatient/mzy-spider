@@ -46,7 +46,7 @@ func Run(addr string) {
 	c := colly.NewCollector(
 		colly.UserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.130 Safari/537.36"),
 	)
-	c.SetRequestTimeout(5 * time.Second)
+	c.SetRequestTimeout(8 * time.Second)
 	// 生成新的操作对象
 	videoColly, videoListColly, pageSizeColly, videoDetailColly := c.Clone(), c.Clone(), c.Clone(), c.Clone()
 
