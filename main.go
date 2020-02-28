@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	"fmt"
 	"github.com/gomodule/redigo/redis"
 	"html/template"
@@ -66,8 +67,73 @@ func workDownLoadHandle(resp http.ResponseWriter, req *http.Request) {
 	}
 	httpreq.DownloadVideo(resp, size, menu, search)
 }
+func workDownLoadByIDSHandle(resp http.ResponseWriter, req *http.Request) {
+	var (
+		runKey = req.URL.Query().Get("run_key")
+		movies = req.URL.Query().Get("ids")
+	)
+	rely, err := redis.String(stock.Redis.Do("GET", "run_key"))
+	if err != nil || runKey != rely {
+		resp.Write([]byte("INVALID PARAMETER VALUE"))
+		return
+	}
+	httpreq.DownloadVideoByIDS(resp, movies)
+}
+func searchMovieHandle(resp http.ResponseWriter, req *http.Request) {
+	var (
+		runKey    = req.URL.Query().Get("run_key")
+		action    = stock.ActionMysql.Db
+		search, _ = url.PathUnescape(req.URL.Query().Get("q"))
+		page, _   = strconv.ParseInt(req.URL.Query().Get("page"), 0, 64)
+		where     = ""
+		offset    = int64(0)
+	)
+	type MovieSub struct {
+		Id          int64  `json:"id"`
+		Title       string `json:"title"`
+		DownLoadUrl string `json:"download_url"`
+		HtmlPath    string `json:"html_path"`
+		Menu        string `json:"menu"`
+	}
+	if page <= 0 {
+		page = 1
+	}
+	offset = (page - 1) * 15
+	rely, err := redis.String(stock.Redis.Do("GET", "run_key"))
+	if err != nil || runKey != rely {
+		resp.Write([]byte("INVALID PARAMETER VALUE"))
+		return
+	}
+	if search != "" {
+		where = where + fmt.Sprintf(" AND MATCH(title) AGAINST('*%s*'IN BOOLEAN MODE)", search)
+	}
+	rows, err := action.Query("SELECT id,thunder_url,title,html_url,menu FROM movie_info WHERE is_down=0"+where+" ORDER BY dateline DESC LIMIT ?,?", offset, 15)
+	if err != nil && err != sql.ErrNoRows {
+		panic(err)
+	}
+	var list = []MovieSub{}
+	for rows.Next() {
+		l := MovieSub{}
+		err = rows.Scan(&l.Id, &l.DownLoadUrl, &l.Title, &l.HtmlPath, &l.Menu)
+		if err != nil {
+			log.Println(err.Error())
+			continue
+		}
+		list = append(list, l)
+	}
+	rows.Close()
+	until.Json(resp, list)
+}
 func htmlDownLoadHandle(resp http.ResponseWriter, req *http.Request) {
 	t, err := template.ParseFiles("./html/download.html")
+	if err != nil {
+		log.Println("err:", err)
+		return
+	}
+	t.Execute(resp, nil)
+}
+func htmlSearchHandle(resp http.ResponseWriter, req *http.Request) {
+	t, err := template.ParseFiles("./html/search.html")
 	if err != nil {
 		log.Println("err:", err)
 		return
@@ -83,6 +149,9 @@ func main() {
 	mux.HandleFunc("/program/run", workHandle)
 	mux.HandleFunc("/download/run", workDownLoadHandle)
 	mux.HandleFunc("/download/index", htmlDownLoadHandle)
+	mux.HandleFunc("/download/search", searchMovieHandle)
+	mux.HandleFunc("/download/searchHtml", htmlSearchHandle)
+	mux.HandleFunc("/download/search_run", workDownLoadByIDSHandle)
 
 	srv := &http.Server{
 		Addr:           addr,

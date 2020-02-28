@@ -296,3 +296,53 @@ func DownloadVideo(resp http.ResponseWriter, PageSize int64, menu, search string
 
 	until.Json(resp, task)
 }
+
+// 检索批量下载
+func DownloadVideoByIDS(resp http.ResponseWriter, movies string) {
+	var (
+		mysqlDB = stock.ActionMysql.Db
+		task    = model.Thunder{
+			MinVersion:         "10.0.1.0",
+			DownloadDir:        "视频资源",
+			TaskGroupName:      "",
+			ThunderInstallPack: "http://down.sandai.net/thunderx/XunLeiSetup10.1.1.148Beta.exe",
+		}
+		ids []string
+	)
+	ids = strings.Split(movies, ",")
+	rows, err := mysqlDB.Query("SELECT id,thunder_url,title,video_url FROM movie_info WHERE is_down=0 AND id IN(?)", movies)
+	if err != nil && err != sql.ErrNoRows {
+		panic(err.Error())
+	}
+	for rows.Next() {
+		id := int64(0)
+		url := ""
+		m := model.Task{}
+		err = rows.Scan(&id, &m.Url, &m.Name, &url)
+		if err != nil {
+			log.Println(err.Error())
+			continue
+		}
+		if strings.Contains(url, "rmvb") {
+			m.Name = m.Name + ".rmvb"
+		} else {
+			m.Name = m.Name + ".mp4"
+		}
+		ids = append(ids, strconv.Itoa(int(id)))
+		task.Tasks = append(task.Tasks, m)
+	}
+	rows.Close()
+
+	if len(ids) > 0 {
+		str := fmt.Sprintf("UPDATE movie_info SET is_down=1 WHERE id IN(%s)", strings.Join(ids, ","))
+		ret, err := mysqlDB.Exec(str)
+		if err != nil {
+			panic(err.Error())
+		}
+		if v, ok := ret.RowsAffected(); ok != nil || v <= 0 {
+			log.Println("[写入数据库失败]:", ok.Error())
+		}
+	}
+
+	until.Json(resp, task)
+}
