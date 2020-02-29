@@ -129,7 +129,6 @@
             if (ids !== "") {
                 url = url + "&ids=" + ids;
             }
-            console.log(url);
             thunderLink.newTask({
                 minVersion: '',
                 thunderInstallPack: '',
@@ -137,6 +136,9 @@
                 json: url,
                 referer: ''
             });
+            setTimeout(function () {
+                loadMovie($("#search").val(), 1);
+            },2000);
         });
     });
 
