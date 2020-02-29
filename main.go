@@ -15,7 +15,7 @@ import (
 	"time"
 )
 
-const IsUPDATEREADY = true //是否更新密钥,仅用于调试模式
+const IsUPDATEREADY = false //是否更新密钥,仅用于调试模式
 
 func workHandle(resp http.ResponseWriter, req *http.Request) {
 	if req.Method == http.MethodGet {
@@ -105,7 +105,7 @@ func searchMovieHandle(resp http.ResponseWriter, req *http.Request) {
 		return
 	}
 	if search != "" {
-		where = where + fmt.Sprintf(" AND MATCH(title) AGAINST('*%s*'IN BOOLEAN MODE)", search)
+		where = where + fmt.Sprintf(" AND MATCH(title,menu) AGAINST('*%s*'IN BOOLEAN MODE)", search)
 	}
 	rows, err := action.Query("SELECT id,thunder_url,title,html_url,menu FROM movie_info WHERE is_down=0"+where+" ORDER BY dateline DESC LIMIT ?,?", offset, 15)
 	if err != nil && err != sql.ErrNoRows {

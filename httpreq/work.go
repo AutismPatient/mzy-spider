@@ -46,7 +46,7 @@ func Run(addr string) {
 	c := colly.NewCollector(
 		colly.UserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.130 Safari/537.36"),
 	)
-	c.SetRequestTimeout(8 * time.Second)
+	c.SetRequestTimeout(5 * time.Second)
 	// 生成新的操作对象
 	videoColly, videoListColly, pageSizeColly, videoDetailColly := c.Clone(), c.Clone(), c.Clone(), c.Clone()
 
@@ -111,7 +111,7 @@ func Run(addr string) {
 	pageSizeColly.OnHTML(".pagination > a:nth-last-child(4)", func(htmlElement *colly.HTMLElement) {
 		var pageSize, _ = strconv.ParseInt(htmlElement.Text, 0, 64)
 		for i := 1; i <= int(pageSize); i++ {
-			if !IsPageNext {
+			if !IsPageNext || i <= 20 {
 				path := htmlElement.Request.URL.Path[0:strings.Index(htmlElement.Request.URL.Path, ".html")]
 				path = path + fmt.Sprintf("-%d.html", i)
 				url := htmlElement.Request.URL.Scheme + "://" + htmlElement.Request.URL.Host + path
@@ -258,7 +258,7 @@ func DownloadVideo(resp http.ResponseWriter, PageSize int64, menu, search string
 		where = fmt.Sprintf(" AND menu='%s'", menu)
 	}
 	if search != "" {
-		where = where + fmt.Sprintf(" AND MATCH(title) AGAINST('*%s*'IN BOOLEAN MODE)", search)
+		where = where + fmt.Sprintf(" AND MATCH(title,menu) AGAINST('*%s*'IN BOOLEAN MODE)", search)
 	}
 	rows, err := mysqlDB.Query("SELECT id,thunder_url,title,video_url FROM movie_info WHERE is_down=0"+where+" LIMIT ?", PageSize)
 	if err != nil && err != sql.ErrNoRows {
@@ -310,10 +310,12 @@ func DownloadVideoByIDS(resp http.ResponseWriter, movies string) {
 		ids []string
 	)
 	ids = strings.Split(movies, ",")
-	rows, err := mysqlDB.Query("SELECT id,thunder_url,title,video_url FROM movie_info WHERE is_down=0 AND id IN(?)", movies)
+	str := fmt.Sprintf("SELECT id,thunder_url,title,video_url FROM movie_info WHERE is_down=0 AND id IN(%s)", movies)
+	rows, err := mysqlDB.Query(str)
 	if err != nil && err != sql.ErrNoRows {
 		panic(err.Error())
 	}
+	task.ThreadCount = len(ids)
 	for rows.Next() {
 		id := int64(0)
 		url := ""
