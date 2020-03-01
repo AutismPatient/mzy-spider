@@ -15,7 +15,7 @@ import (
 	"time"
 )
 
-const IsUPDATEREADY = false //是否更新密钥,仅用于调试模式
+const IsUPDATEREADY = true //是否更新密钥,仅用于调试模式
 
 func workHandle(resp http.ResponseWriter, req *http.Request) {
 	if req.Method == http.MethodGet {

@@ -108,8 +108,10 @@
         $('#all').click(function () {
             if ($(this).is(":checked")) {
                 $('#movie_list').find('input[type=checkbox]').attr("checked", true);
+                $('#movie_list').find('input[type=checkbox]').prop("checked", true);
             } else {
                 $('#movie_list').find('input[type=checkbox]').attr("checked", false);
+                $('#movie_list').find('input[type=checkbox]').prop("checked", false);
             }
         });
 
