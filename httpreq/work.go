@@ -310,6 +310,10 @@ func DownloadVideoByIDS(resp http.ResponseWriter, movies string) {
 		ids []string
 	)
 	ids = strings.Split(movies, ",")
+	if len(ids) <= 0 {
+		until.Json(resp, "404")
+		return
+	}
 	str := fmt.Sprintf("SELECT id,thunder_url,title,video_url FROM movie_info WHERE is_down=0 AND id IN(%s)", movies)
 	rows, err := mysqlDB.Query(str)
 	if err != nil && err != sql.ErrNoRows {
