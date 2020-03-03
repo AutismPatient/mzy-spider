@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -37,8 +38,8 @@ func workHandle(resp http.ResponseWriter, req *http.Request) {
 		}
 
 		defer func() {
-			httpreq.Run("https://www.maomiav.com/")
-			fmt.Println(time.Now().Format("2006-01-02 15:04:05") + "-- 任务执行完成.")
+			httpreq.Run(httpreq.ConfigList["地址"])
+			fmt.Println(until.TimeFormat(time.Now()) + "-- 任务执行完成.")
 		}()
 
 		ret, err = mysqlDB.Exec("UPDATE runtime SET is_run=? WHERE run_key=?", 0, runKey)
@@ -168,11 +169,13 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
-
-		err = until.SendEmail([]string{"1010014622@qq.com", "1746793113@qq.com"}, "run_key", token)
-
-		if err != nil {
-			panic(err)
+		// send email
+		emailArr := strings.Split(httpreq.ConfigList["email"], ",")
+		if len(emailArr) > 0 {
+			err = until.SendEmail(emailArr, "用于启动的秘钥--"+until.TimeFormat(time.Now()), token, httpreq.ConfigList["授权码"])
+			if err != nil {
+				panic(err)
+			}
 		}
 	}
 	// 判断是否启用快捷模式
@@ -184,15 +187,16 @@ func main() {
 		panic(err)
 	}
 
-	if (time.Now().Unix() - dateLine) < (86400 * 5) { // 5天内启用
+	day, _ := strconv.ParseInt(httpreq.ConfigList["快捷模式"], 0, 64)
+	if (time.Now().Unix() - dateLine) < (86400 * day) { // 5天内启用
 		_, err := stock.Redis.Do("set", "next", time.Now().Unix())
 		if err != nil {
 			panic(err)
 		}
-		log.Println(time.Now().Format("2006-01-02 15:04:05") + "快捷模式")
+		log.Println(until.TimeFormat(time.Now()) + "快捷模式")
 	}
 
-	until.PrintlnMsg(false, true, time.Now().Format("2006-01-02 15:04:05")+" 站点初始化成功，秘钥已更新")
+	until.PrintlnMsg(false, true, until.TimeFormat(time.Now())+" 站点初始化成功，秘钥已更新")
 
 	log.Fatal(srv.ListenAndServe())
 }

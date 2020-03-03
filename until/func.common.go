@@ -36,11 +36,13 @@ func PrintlnMsg(error, ln bool, msg string) {
 		fmt.Print(str)
 	}
 }
-func SendEmail(mailTo []string, subject string, body string) error {
+
+// 发送邮件
+func SendEmail(mailTo []string, subject, body, pass string) error {
 
 	mailConn := map[string]string{
 		"user": "1010014622@qq.com",
-		"pass": "tvyzsstspscrbbjh", // 授权码
+		"pass": pass, // 授权码
 		"host": "smtp.qq.com",
 		"port": "465",
 	}
@@ -70,4 +72,7 @@ func Json(resp http.ResponseWriter, data interface{}) {
 	resp.Header().Set("Content-Type", "application/json")
 
 	resp.Write(buffer.Bytes())
+}
+func TimeFormat(time time.Time) string {
+	return time.Format("2006-01-02 15:04:05")
 }
