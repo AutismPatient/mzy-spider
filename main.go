@@ -1,167 +1,24 @@
 package main
 
 import (
-	"database/sql"
 	"fmt"
-	"github.com/gomodule/redigo/redis"
-	"html/template"
+	"github.com/gin-gonic/gin"
 	"log"
+	_ "mzy-spider/controller"
 	"mzy-spider/httpreq"
+	"mzy-spider/reg"
 	"mzy-spider/stock"
 	"mzy-spider/until"
 	"net/http"
-	"net/url"
 	"strconv"
 	"strings"
 	"time"
 )
 
 const IsUPDATEREADY = true //是否更新密钥,仅用于调试模式
+var Mode = true
 
-func workHandle(resp http.ResponseWriter, req *http.Request) {
-	if req.Method == http.MethodGet {
-		var (
-			mysqlDB = stock.ActionMysql.Db
-			runKey  = req.URL.Query().Get("run_key")
-		)
-		rely, err := redis.String(stock.Redis.Do("GET", "run_key"))
-		if err != nil || runKey != rely {
-			resp.Write([]byte("INVALID PARAMETER VALUE"))
-			return
-		}
-		ret, err := mysqlDB.Exec("INSERT runtime SET run_key=?,is_run=?,run_time=?", runKey, 1, time.Now().Unix())
-		if err != nil {
-			panic(err.Error())
-		}
-		if v, ok := ret.RowsAffected(); ok != nil || v <= 0 {
-			log.Println("[写入数据库失败]:", ok.Error())
-		}
-
-		defer func() {
-			httpreq.Run(httpreq.ConfigList["地址"])
-			fmt.Println(until.TimeFormat(time.Now()) + "-- 任务执行完成.")
-		}()
-
-		ret, err = mysqlDB.Exec("UPDATE runtime SET is_run=? WHERE run_key=?", 0, runKey)
-		if err != nil {
-			panic(err.Error())
-		}
-		if v, ok := ret.RowsAffected(); ok != nil || v <= 0 {
-			log.Println("[写入数据库失败]:", ok.Error())
-		}
-		resp.Write([]byte("Task begins"))
-		return
-	}
-	resp.WriteHeader(404)
-}
-func workDownLoadHandle(resp http.ResponseWriter, req *http.Request) {
-	var (
-		runKey    = req.URL.Query().Get("run_key")
-		menu, _   = url.PathUnescape(req.URL.Query().Get("menu"))
-		search, _ = url.PathUnescape(req.URL.Query().Get("q"))
-		size, _   = strconv.ParseInt(req.URL.Query().Get("page_size"), 0, 64)
-	)
-	rely, err := redis.String(stock.Redis.Do("GET", "run_key"))
-	if err != nil || runKey != rely {
-		resp.Write([]byte("INVALID PARAMETER VALUE"))
-		return
-	}
-	httpreq.DownloadVideo(resp, size, menu, search)
-}
-func workDownLoadByIDSHandle(resp http.ResponseWriter, req *http.Request) {
-	var (
-		runKey = req.URL.Query().Get("run_key")
-		movies = req.URL.Query().Get("ids")
-	)
-	rely, err := redis.String(stock.Redis.Do("GET", "run_key"))
-	if err != nil || runKey != rely {
-		resp.Write([]byte("INVALID PARAMETER VALUE"))
-		return
-	}
-	httpreq.DownloadVideoByIDS(resp, movies)
-}
-func searchMovieHandle(resp http.ResponseWriter, req *http.Request) {
-	var (
-		runKey    = req.URL.Query().Get("run_key")
-		action    = stock.ActionMysql.Db
-		search, _ = url.PathUnescape(req.URL.Query().Get("q"))
-		page, _   = strconv.ParseInt(req.URL.Query().Get("page"), 0, 64)
-		where     = ""
-		offset    = int64(0)
-	)
-	type MovieSub struct {
-		Id          int64  `json:"id"`
-		Title       string `json:"title"`
-		DownLoadUrl string `json:"download_url"`
-		HtmlPath    string `json:"html_path"`
-		Menu        string `json:"menu"`
-	}
-	if page <= 0 {
-		page = 1
-	}
-	offset = (page - 1) * 15
-	rely, err := redis.String(stock.Redis.Do("GET", "run_key"))
-	if err != nil || runKey != rely {
-		resp.Write([]byte("INVALID PARAMETER VALUE"))
-		return
-	}
-	if search != "" {
-		where = where + fmt.Sprintf(" AND MATCH(title,menu) AGAINST('*%s*'IN BOOLEAN MODE)", search)
-	}
-	rows, err := action.Query("SELECT id,thunder_url,title,html_url,menu FROM movie_info WHERE is_down=0"+where+" ORDER BY dateline DESC LIMIT ?,?", offset, 15)
-	if err != nil && err != sql.ErrNoRows {
-		panic(err)
-	}
-	var list = []MovieSub{}
-	for rows.Next() {
-		l := MovieSub{}
-		err = rows.Scan(&l.Id, &l.DownLoadUrl, &l.Title, &l.HtmlPath, &l.Menu)
-		if err != nil {
-			log.Println(err.Error())
-			continue
-		}
-		list = append(list, l)
-	}
-	rows.Close()
-	until.Json(resp, list)
-}
-func htmlDownLoadHandle(resp http.ResponseWriter, req *http.Request) {
-	t, err := template.ParseFiles("./html/download.html")
-	if err != nil {
-		log.Println("err:", err)
-		return
-	}
-	t.Execute(resp, nil)
-}
-func htmlSearchHandle(resp http.ResponseWriter, req *http.Request) {
-	t, err := template.ParseFiles("./html/search.html")
-	if err != nil {
-		log.Println("err:", err)
-		return
-	}
-	t.Execute(resp, nil)
-}
 func main() {
-
-	addr := ":8888"
-
-	mux := http.NewServeMux()
-
-	mux.HandleFunc("/program/run", workHandle)
-	mux.HandleFunc("/download/run", workDownLoadHandle)
-	mux.HandleFunc("/download/index", htmlDownLoadHandle)
-	mux.HandleFunc("/download/search", searchMovieHandle)
-	mux.HandleFunc("/download/searchHtml", htmlSearchHandle)
-	mux.HandleFunc("/download/search_run", workDownLoadByIDSHandle)
-
-	srv := &http.Server{
-		Addr:           addr,
-		Handler:        mux,
-		ReadTimeout:    5 * time.Second,
-		WriteTimeout:   10 * time.Second,
-		MaxHeaderBytes: 1 << 20,
-		IdleTimeout:    5 * time.Second,
-	}
 
 	if IsUPDATEREADY {
 		token := until.GenerateToken(0)
@@ -198,5 +55,68 @@ func main() {
 
 	until.PrintlnMsg(false, true, until.TimeFormat(time.Now())+" 站点初始化成功，秘钥已更新")
 
-	log.Fatal(srv.ListenAndServe())
+	server := gin.New() // New()
+	//set Mode
+	if Mode {
+		gin.SetMode(gin.DebugMode)
+	} else {
+		gin.SetMode(gin.ReleaseMode)
+	}
+	gin.ForceConsoleColor()
+	server.Use(gin.LoggerWithFormatter(func(param gin.LogFormatterParams) string {
+		// custom format
+		var statusColor, methodColor, resetColor, byteStr string
+		statusColor = param.StatusCodeColor()
+		methodColor = param.MethodColor()
+		resetColor = param.ResetColor()
+		var offset = reg.Decimal(float64(param.BodySize) / 1024)
+		if offset <= 0 {
+			byteStr = "0"
+		} else {
+			byteStr = strconv.FormatFloat(offset, 'f', -1, 32)
+		}
+		return fmt.Sprintf("%s - [%s] - [%s %s %s %13v %s %3d %s %s %s] - [%s kb] - [%s]\n",
+			param.ClientIP,
+			param.TimeStamp.Format("2006-01-02 15:04:05"),
+			methodColor, param.Method, resetColor,
+			param.Latency,
+			statusColor, param.StatusCode, resetColor,
+			param.Request.Proto,
+			param.Path,
+			byteStr,
+			param.Request.UserAgent(),
+		)
+	}))
+	server.Use(gin.Recovery()) // 消除异常
+	//注册路由到 gin handler
+	for path, handle := range reg.Actions {
+		if v, ok := reg.Ignore[path]; ok {
+			server.GET(path, v)
+			server.POST(path, v)
+			continue
+		}
+		if v, ok := reg.PathActions[path]; ok {
+			group := server.Group(v)
+			if auth, ok := reg.AuthFunc[v]; ok {
+				group.Use(reg.ServerMiddleware(auth))
+			}
+			if strings.Contains(path, v) {
+				path = strings.Replace(path, v, "", -1)
+			}
+			//set get、post httpMethod
+			group.GET(path, handle)
+			group.POST(path, handle)
+		}
+	}
+	server.Static("/static", "html")
+
+	srv := &http.Server{
+		Addr:           ":8888",
+		Handler:        server,
+		ReadTimeout:    5 * time.Second,
+		WriteTimeout:   10 * time.Second,
+		MaxHeaderBytes: 1 << 20,
+		IdleTimeout:    8 * time.Second,
+	}
+	srv.ListenAndServe()
 }
