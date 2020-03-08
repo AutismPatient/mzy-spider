@@ -365,7 +365,7 @@ func DownloadVideoByIDS(resp http.ResponseWriter, movies string) {
 		if err != nil {
 			panic(err.Error())
 		}
-		if v, ok := ret.RowsAffected(); ok != nil || v <= 0 {
+		if _, ok := ret.RowsAffected(); ok != nil {
 			log.Println("[写入数据库失败]:", ok.Error())
 		}
 	}

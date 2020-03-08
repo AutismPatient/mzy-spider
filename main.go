@@ -16,6 +16,7 @@ import (
 )
 
 const IsUPDATEREADY = true //是否更新密钥,仅用于调试模式
+
 var Mode = true
 
 func main() {
