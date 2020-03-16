@@ -265,11 +265,9 @@ func DownloadVideo(resp http.ResponseWriter, PageSize int64, menu, search string
 	var (
 		mysqlDB = stock.ActionMysql.Db
 		task    = model.Thunder{
-			MinVersion:         "10.0.1.0",
-			DownloadDir:        "视频资源",
-			TaskGroupName:      "",
-			ThreadCount:        10,
-			ThunderInstallPack: "http://down.sandai.net/thunderx/XunLeiSetup10.1.1.148Beta.exe",
+			DownloadDir:   "视频资源",
+			TaskGroupName: "",
+			ThreadCount:   10,
 		}
 		ids   []string
 		where = ""
@@ -322,10 +320,8 @@ func DownloadVideoByIDS(resp http.ResponseWriter, movies string) {
 	var (
 		mysqlDB = stock.ActionMysql.Db
 		task    = model.Thunder{
-			MinVersion:         "10.0.1.0",
-			DownloadDir:        "视频资源",
-			TaskGroupName:      "",
-			ThunderInstallPack: "http://down.sandai.net/thunderx/XunLeiSetup10.1.1.148Beta.exe",
+			DownloadDir:   "视频资源",
+			TaskGroupName: "",
 		}
 		ids []string
 	)
