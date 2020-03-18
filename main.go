@@ -15,26 +15,43 @@ import (
 	"time"
 )
 
-const IsUPDATEREADY = true //是否更新密钥,仅用于调试模式
-
-var Mode = true
+var (
+	IsUPDATEREADY = true //是否更新密钥,仅用于调试模式
+	Mode          = true // debug or release
+)
 
 func main() {
 
+	// 读取配置
+	httpreq.Config.Store(ReadConfig())
+
+	// 开一个线程用于读取最新配置
+	go func() {
+		for {
+			time.Sleep(time.Second * 2)
+			httpreq.Config.Store(ReadConfig())
+			httpreq.ConfigValue = httpreq.Config.Load().(map[string]string)
+		}
+	}()
+
+	httpreq.ConfigValue = httpreq.Config.Load().(map[string]string)
+
 	if IsUPDATEREADY {
-		token := until.GenerateToken(0)
-		_, err := stock.Redis.Do("set", "run_key", token)
-		if err != nil {
-			panic(err)
-		}
-		// send email
-		emailArr := strings.Split(httpreq.ConfigList["email"], ",")
-		if len(emailArr) > 0 {
-			err = until.SendEmail(emailArr, "用于启动的秘钥--"+until.TimeFormat(time.Now()), token, httpreq.ConfigList["授权码"])
-			if err != nil {
-				panic(err)
+
+		// 开一个线程用于定期发送秘钥
+		go func() {
+			for {
+				var (
+					regular, _ = strconv.ParseInt(httpreq.ConfigValue["更新秘钥"], 0, 64)
+					d, _       = time.ParseDuration(fmt.Sprintf("%ds", regular))
+				)
+				time.Sleep(d)
+				sendEmail()
+				until.PrintlnMsg(false, true, until.TimeFormat(time.Now())+"秘钥已更新，要更改时间间隔请配置")
 			}
-		}
+		}()
+
+		sendEmail()
 	}
 	// 判断是否启用快捷模式
 	actionMysql := stock.ActionMysql.Db
@@ -45,7 +62,7 @@ func main() {
 		panic(err)
 	}
 
-	day, _ := strconv.ParseInt(httpreq.ConfigList["快捷模式"], 0, 64)
+	day, _ := strconv.ParseInt(httpreq.ConfigValue["快捷模式"], 0, 64)
 	if (time.Now().Unix() - dateLine) < (86400 * day) { // 5天内启用
 		_, err := stock.Redis.Do("set", "next", time.Now().Unix())
 		if err != nil {
@@ -56,7 +73,8 @@ func main() {
 
 	until.PrintlnMsg(false, true, until.TimeFormat(time.Now())+" 站点初始化成功，秘钥已更新")
 
-	server := gin.New() // New()
+	// New()
+	server := gin.New()
 	//set Mode
 	if Mode {
 		gin.SetMode(gin.DebugMode)
@@ -83,7 +101,7 @@ func main() {
 			param.Latency,
 			statusColor, param.StatusCode, resetColor,
 			param.Request.Proto,
-			param.Path,
+			param.Request.URL.String(),
 			byteStr,
 			param.Request.UserAgent(),
 		)
@@ -112,7 +130,7 @@ func main() {
 	server.Static("/static", "html")
 
 	srv := &http.Server{
-		Addr:           ":8888",
+		Addr:           ":" + httpreq.ConfigValue["端口"],
 		Handler:        server,
 		ReadTimeout:    5 * time.Second,
 		WriteTimeout:   10 * time.Second,
@@ -120,4 +138,43 @@ func main() {
 		IdleTimeout:    8 * time.Second,
 	}
 	srv.ListenAndServe()
+}
+
+// 读取相关配置
+func ReadConfig() (config map[string]string) {
+	// 读取数据库配置
+	config = make(map[string]string, 0)
+	rows, err := stock.ActionMysql.Db.Query("SELECT name,value FROM config")
+	if err != nil {
+		panic(err)
+	}
+	for rows.Next() {
+		var (
+			name = ""
+			val  = ""
+		)
+		err = rows.Scan(&name, &val)
+		if err != nil {
+			log.Println(err)
+			continue
+		}
+		config[name] = val
+	}
+	rows.Close()
+	return
+}
+func sendEmail() {
+	token := until.GenerateToken(0)
+	_, err := stock.Redis.Do("set", "run_key", token)
+	if err != nil {
+		panic(err)
+	}
+	// send email
+	emailArr := strings.Split(httpreq.ConfigValue["email"], ",")
+	if len(emailArr) > 0 {
+		err = until.SendEmail(emailArr, "用于启动的秘钥--"+until.TimeFormat(time.Now()), token, httpreq.ConfigValue["授权码"])
+		if err != nil {
+			panic(err)
+		}
+	}
 }

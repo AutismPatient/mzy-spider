@@ -36,7 +36,7 @@ func (c *ProgramController) Run(r *gin.Context) {
 		}
 
 		defer func() {
-			httpreq.Run(httpreq.ConfigList["地址"])
+			httpreq.Run(httpreq.ConfigValue["地址"])
 			fmt.Println(until.TimeFormat(time.Now()) + "-- 任务执行完成.")
 		}()
 

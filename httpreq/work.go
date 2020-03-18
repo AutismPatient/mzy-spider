@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 )
 
@@ -25,7 +26,8 @@ var (
 	IsNext        = false
 	Movie         = model.MovieInfo{}
 	IsPageNext    = false
-	ConfigList    = make(map[string]string, 0)
+	Config        atomic.Value
+	ConfigValue   = make(map[string]string, 0)
 )
 
 // 加载一些数据配置
@@ -37,24 +39,6 @@ func init() {
 	if unix != "" {
 		IsPageNext = true
 	}
-	// 读取数据库配置
-	rows, err := stock.ActionMysql.Db.Query("SELECT name,value FROM config")
-	if err != nil {
-		panic(err)
-	}
-	for rows.Next() {
-		var (
-			name = ""
-			val  = ""
-		)
-		err = rows.Scan(&name, &val)
-		if err != nil {
-			log.Println(err)
-			continue
-		}
-		ConfigList[name] = val
-	}
-	rows.Close()
 }
 
 // 猫咪视频资源(所有)
@@ -65,7 +49,7 @@ func Run(addr string) {
 	c := colly.NewCollector(
 		colly.UserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.130 Safari/537.36"),
 	)
-	timeout, _ := strconv.ParseInt(ConfigList["超时时间"], 0, 64)
+	timeout, _ := strconv.ParseInt(ConfigValue["超时时间"], 0, 64)
 	d, _ := time.ParseDuration(fmt.Sprintf("%ds", timeout))
 	c.SetRequestTimeout(d)
 	// 生成新的操作对象
