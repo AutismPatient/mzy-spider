@@ -16,8 +16,8 @@ import (
 )
 
 var (
-	IsUPDATEREADY = true //是否更新密钥,仅用于调试模式
-	Mode          = true // debug or release
+	IsUPDATEREADY = true  //是否更新密钥,仅用于调试模式
+	Mode          = false // debug or release
 )
 
 func main() {
@@ -47,7 +47,7 @@ func main() {
 				)
 				time.Sleep(d)
 				sendEmail()
-				until.PrintlnMsg(false, true, until.TimeFormat(time.Now())+"秘钥已更新，要更改时间间隔请配置")
+				until.PrintlnMsg(false, true, until.TimeFormat(time.Now())+" 秘钥已更新，要更改时间间隔请配置")
 			}
 		}()
 
