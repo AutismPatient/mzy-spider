@@ -215,6 +215,8 @@ func Run(addr string) {
 
 	c.Visit(addr)
 }
+
+//  检测
 func IsExist(title string) (model.MovieInfo, bool) {
 	var (
 		movie   model.MovieInfo
@@ -241,7 +243,7 @@ func containsKey(str string) bool {
 	return false
 }
 
-// 批量下载迅雷X
+// 批量下载迅雷X todo 2020年3月31日20:37:51
 func DownloadVideo(resp http.ResponseWriter, PageSize int64, menu, search string) {
 	if PageSize == 0 {
 		PageSize = 5
@@ -275,11 +277,7 @@ func DownloadVideo(resp http.ResponseWriter, PageSize int64, menu, search string
 			log.Println(err.Error())
 			continue
 		}
-		if strings.Contains(url, "rmvb") {
-			m.Name = m.Name + ".rmvb"
-		} else {
-			m.Name = m.Name + ".mp4"
-		}
+		m.Name = m.Name + ".mp4"
 		ids = append(ids, strconv.Itoa(int(id)))
 		task.Tasks = append(task.Tasks, m)
 	}
@@ -329,11 +327,7 @@ func DownloadVideoByIDS(resp http.ResponseWriter, movies string) {
 			log.Println(err.Error())
 			continue
 		}
-		if strings.Contains(url, "rmvb") {
-			m.Name = m.Name + ".rmvb"
-		} else {
-			m.Name = m.Name + ".mp4"
-		}
+		m.Name = m.Name + ".mp4"
 		ids = append(ids, strconv.Itoa(int(id)))
 		task.Tasks = append(task.Tasks, m)
 	}

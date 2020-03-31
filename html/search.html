@@ -2,10 +2,15 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0,
+                                 maximum-scale=1.0, user-scalable=no">
     <title>视频列表 -- 批量下载中心</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@3.3.7/dist/css/bootstrap.min.css"
           integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+    <link href="https://vjs.zencdn.net/7.7.5/video-js.css" rel="stylesheet" />
 
+    <!-- If you'd like to support IE8 (for Video.js versions prior to v7) -->
+    <script src="https://vjs.zencdn.net/ie8/1.1.2/videojs-ie8.min.js"></script>
     <style>
         body, * {
             margin: 0;
@@ -28,18 +33,40 @@
             float: left;
             margin-top: 0;
         }
+
+        .mt-2 {
+            margin-bottom: 16px;
+        }
     </style>
 </head>
 <body>
+
+<!-- Modal -->
+<div class="modal fade" id="myModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title" id="myModalLabel">？？</h4>
+            </div>
+            <div class="modal-body">
+
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
 <div class="container" style="padding-top: 20px;">
     <div class="panel panel-primary">
         <div class="panel-heading">检索资源库并批量下载</div>
         <div class="panel-body">
             <div class="row">
-                <div class="col-lg-6">
+                <div class="col-lg-6 mt-2">
                     <input type="text" class="form-control" id="key" placeholder="启动秘钥">
                 </div>
-                <div class="col-lg-6">
+                <div class="col-lg-6 mt-2">
                     <div class="input-group">
                         <input type="text" class="form-control" id="search" placeholder="Search for...">
                         <span class="input-group-btn">
@@ -52,6 +79,9 @@
             <div class="checkbox" style="padding-left: 15px">
                 <label>
                     <input type="checkbox" id="all"> 全选
+                </label>
+                <label style="margin-left: 26px">
+                    <input type="checkbox" id="down_check"> 选择已下载
                 </label>
             </div>
 
@@ -71,6 +101,7 @@
     </div>
 </div>
 <script src="https://cdn.bootcss.com/jquery/3.3.1/jquery.min.js"></script>
+<script src="https://vjs.zencdn.net/7.7.5/video.js"></script>
 <!-- 最新的 Bootstrap 核心 JavaScript 文件 -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@3.3.7/dist/js/bootstrap.min.js"
         integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa"
@@ -96,13 +127,17 @@
                 page = 1;
             }
             $('.previous').removeClass('disabled');
-            loadMovie($("#search").val(), page);
+            loadMovie($("#search").val(), page, 0);
         });
 
         $('#submit-body').click(function () {
             page = 1;
             $('.previous').addClass('disabled');
-            loadMovie($('#search').val(), 1);
+            if ($('#down_check').is(":checked")) {
+                loadMovie($('#search').val(), 1, 1);
+            } else {
+                loadMovie($('#search').val(), 1, 0);
+            }
         });
 
         $('#all').click(function () {
@@ -115,7 +150,18 @@
             }
         });
 
+        $("#down_check").click(function () {
+            if ($(this).is(":checked")) {
+                loadMovie($("#search").val(), 1, 1)
+            } else {
+                loadMovie($("#search").val(), 1, 0)
+            }
+        })
+
         jq('#config-json-task').click(function () {
+            if($("#down_check").is(":checked")){
+                return
+            }
             var url = "http://localhost:8888/download/searchrun?run_key=";
             var key = jq('#key').val();
             var ids = "";
@@ -139,12 +185,29 @@
                 referer: ''
             });
             setTimeout(function () {
-                loadMovie($("#search").val(), 1);
-            },2000);
+                loadMovie($("#search").val(), 1, 0);
+            }, 2000);
         });
     });
 
-    function loadMovie(search, page) {
+    //  视频模态框
+    $('#movie_list').on('click','.video_list',function () {
+        $('#myModal').modal('show');
+        var name = $(this).data('name');
+
+        $.ajax({
+            url: "http://localhost:8888/download/playvideo",
+            data: {
+                name:name
+            },
+            dataType: 'json',
+            success: function (res) {
+                var html = '<video controls="" autoplay=""><source src=""></video>'
+                $('#myModal .modal-body').html(html);
+            }
+        })
+    });
+    function loadMovie(search, page, is_down) {
         $('#all').prop("checked", false);
         var key = $("#key").val();
         $.ajax({
@@ -153,12 +216,14 @@
                 q: encodeURI(search),
                 page: page,
                 run_key: key,
+                is_down: is_down
             },
             dataType: 'json',
             success: function (res) {
                 var arr = [];
                 for (var i = 0; i < res.length; i++) {
-                    var html = "<li class='list-group-item'><div class='checkbox'><label><input type='checkbox' data-id='" + res[i].id + "' data-url='" + res[i].download_url + "' value='' aria-label='...'></label></div><a class='text-tr' href='" + res[i].html_path + "' target='_blank'>" + res[i].title + "  [" + res[i].menu + "]</a></li>"
+                    var html = "<li class='list-group-item'><div class='checkbox'><label><input type='checkbox' data-id='"
+                        + res[i].id + "' data-url='" + res[i].download_url + "' value='' aria-label='...'></label></div><a class='text-tr video_list' data-name='"+res[i].title+"' href='javascript:void(0);'>" + res[i].title + "  [" + res[i].menu + "]</a></li>"
                     arr.push(html);
                 }
                 $("#movie_list").html(arr);

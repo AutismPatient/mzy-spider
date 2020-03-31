@@ -10,6 +10,7 @@ import (
 	"mzy-spider/stock"
 	"mzy-spider/until"
 	"net/url"
+	"strconv"
 )
 
 type VideoDownloadController struct {
@@ -32,11 +33,21 @@ func (c *VideoDownloadController) Run(r *gin.Context) {
 	httpreq.DownloadVideo(r.Writer, size, menu, search)
 }
 
+// GetQueryOfInt64 获取request参数 INT64
+func GetQueryOfInt64(r *gin.Context, key string) (it int64) {
+	q := r.Query(key)
+	it, err := strconv.ParseInt(q, 0, 64)
+	if err != nil {
+		return 0
+	}
+	return it
+}
 func (c *VideoDownloadController) Search(r *gin.Context) {
 	var (
 		action    = stock.ActionMysql.Db
 		search, _ = url.PathUnescape(r.Query("q"))
-		page      = r.GetInt64("page")
+		page      = GetQueryOfInt64(r, "page")
+		isDown    = GetQueryOfInt64(r, "is_down")
 		where     = ""
 		offset    = int64(0)
 	)
@@ -54,7 +65,7 @@ func (c *VideoDownloadController) Search(r *gin.Context) {
 	if search != "" {
 		where = where + fmt.Sprintf(" AND MATCH(title,menu) AGAINST('*%s*'IN BOOLEAN MODE)", search)
 	}
-	rows, err := action.Query("SELECT id,thunder_url,title,html_url,menu FROM movie_info WHERE is_down=0"+where+" ORDER BY dateline DESC LIMIT ?,?", offset, 15)
+	rows, err := action.Query("SELECT id,thunder_url,title,html_url,menu FROM movie_info WHERE is_down=?"+where+" ORDER BY dateline DESC LIMIT ?,?", isDown, offset, 15)
 	if err != nil && err != sql.ErrNoRows {
 		panic(err)
 	}
@@ -77,4 +88,12 @@ func (c *VideoDownloadController) SearchRun(r *gin.Context) {
 		movies = r.Query("ids")
 	)
 	httpreq.DownloadVideoByIDS(r.Writer, movies)
+}
+
+// 视频播放
+func (c *VideoDownloadController) PlayVideo(r *gin.Context) {
+	var (
+		Name = r.Query("title")
+	)
+	r.String(200, Name)
 }
