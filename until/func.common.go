@@ -13,6 +13,10 @@ import (
 
 const (
 	defaultKey = "HSJnpYbnLamBhu"
+	C          = "C:/视频资源"
+	D          = "D:/视频资源"
+	E          = "E:/视频资源"
+	F          = "F:/视频资源"
 )
 
 func GenerateToken(offset int64) string {

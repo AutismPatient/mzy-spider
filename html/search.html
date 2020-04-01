@@ -37,6 +37,10 @@
         .mt-2 {
             margin-bottom: 16px;
         }
+        .modal-body video {
+            max-width: 100%;
+            max-height: 600px;
+        }
     </style>
 </head>
 <body>
@@ -47,7 +51,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-                <h4 class="modal-title" id="myModalLabel">？？</h4>
+                <h4 class="modal-title" id="myModalLabel">......................</h4>
             </div>
             <div class="modal-body">
 
@@ -196,22 +200,27 @@
         var name = $(this).data('name');
 
         $.ajax({
-            url: "http://localhost:8888/download/playvideo",
+            url: "/download/playvideo",
             data: {
-                name:name
+                title:name,
+                run_key:jq('#key').val()
             },
-            dataType: 'json',
             success: function (res) {
-                var html = '<video controls="" autoplay=""><source src=""></video>'
+                var html = '<video controls="" autoplay><source src="'+res+'"></video>'
                 $('#myModal .modal-body').html(html);
             }
         })
     });
     function loadMovie(search, page, is_down) {
+        if(is_down === 0){
+            if($("#down_check").is(":checked")){
+                is_down = 1
+            }
+        }
         $('#all').prop("checked", false);
         var key = $("#key").val();
         $.ajax({
-            url: "http://localhost:8888/download/search",
+            url: "/download/search",
             data: {
                 q: encodeURI(search),
                 page: page,

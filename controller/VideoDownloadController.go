@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"github.com/gin-gonic/gin"
+	"io/ioutil"
 	"log"
 	"mzy-spider/httpreq"
 	"mzy-spider/reg"
@@ -11,6 +12,7 @@ import (
 	"mzy-spider/until"
 	"net/url"
 	"strconv"
+	"strings"
 )
 
 type VideoDownloadController struct {
@@ -94,6 +96,21 @@ func (c *VideoDownloadController) SearchRun(r *gin.Context) {
 func (c *VideoDownloadController) PlayVideo(r *gin.Context) {
 	var (
 		Name = r.Query("title")
+		Dirs = []string{until.C, until.D, until.E, until.F}
+		Path = ""
 	)
-	r.String(200, Name)
+	Name = strings.Replace(Name, " ", "", -1)
+	for _, v := range Dirs {
+		if Path == "" {
+			FileInfos, _ := ioutil.ReadDir(v)
+			for _, v1 := range FileInfos {
+				fn := v1.Name()[:strings.LastIndex(v1.Name(), ".")]
+				if Name == fn {
+					Path = "/" + strings.Replace(v, ":/视频资源", "", -1) + "/" + v1.Name()
+					break
+				}
+			}
+		}
+	}
+	r.String(200, Path)
 }
