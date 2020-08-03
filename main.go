@@ -127,7 +127,12 @@ func main() {
 			group.POST(path, handle)
 		}
 	}
+	// 磁盘资源
 	server.Static("/static", "html")
+	server.Static("/D", "D:/视频资源")
+	server.Static("/C", "C:/视频资源")
+	server.Static("/E", "E:/视频资源")
+	server.Static("/F", "F:/视频资源")
 
 	srv := &http.Server{
 		Addr:           ":" + httpreq.ConfigValue["端口"],
@@ -163,6 +168,8 @@ func ReadConfig() (config map[string]string) {
 	rows.Close()
 	return
 }
+
+// 	发送邮件
 func sendEmail() {
 	token := until.GenerateToken(0)
 	_, err := stock.Redis.Do("set", "run_key", token)

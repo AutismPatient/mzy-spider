@@ -22,6 +22,7 @@ var (
 	DownLoadUrls  = []string{"亚洲电影", "欧美电影", "制服丝袜", "强奸乱伦", "国产自拍", "变态另类", "经典三级", "成人动漫"} // 下载专区 菜单
 	VideoMenuList = []string{"亚洲无码", "女优专辑", "短视频", "国产精品", "中文字幕", "欧美精品", "成人动漫"}          // 在线视频 菜单
 	NewURL        = ""
+	CaCheTitle    = ""
 	defaultHome   = "index/home.html"
 	IsNext        = false
 	Movie         = model.MovieInfo{}
@@ -49,6 +50,10 @@ func Run(addr string) {
 	c := colly.NewCollector(
 		colly.UserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.130 Safari/537.36"),
 	)
+
+	// 设置代理
+	c.SetProxy(ConfigValue["VPN代理"])
+
 	timeout, _ := strconv.ParseInt(ConfigValue["超时时间"], 0, 64)
 	d, _ := time.ParseDuration(fmt.Sprintf("%ds", timeout))
 	c.SetRequestTimeout(d)
@@ -136,6 +141,10 @@ func Run(addr string) {
 	videoListColly.OnHTML("#tpl-img-content > li > a", func(htmlElement *colly.HTMLElement) {
 		var url = htmlElement.Attr("href")
 		title := htmlElement.Attr("title")
+
+		CaCheTitle = ""
+		CaCheTitle = title
+
 		if v, ok := IsExist(title); ok {
 			if v.Id != 0 {
 				Movie = v
@@ -144,9 +153,12 @@ func Run(addr string) {
 		}
 	})
 	// 短视频专区
-	videoListColly.OnHTML("#grid > li > a", func(htmlElement *colly.HTMLElement) {
+	videoListColly.OnHTML(".content-list > li > a", func(htmlElement *colly.HTMLElement) {
 		var url = htmlElement.Attr("href")
 		title := htmlElement.Attr("title")
+
+		CaCheTitle = ""
+		CaCheTitle = title
 
 		if v, ok := IsExist(title); ok {
 			if v.Id != 0 {
@@ -159,6 +171,10 @@ func Run(addr string) {
 	videoDetailColly.OnHTML("#tpl-img-content > li > a", func(element *colly.HTMLElement) {
 		var url = element.Attr("href")
 		title := element.Attr("title")
+
+		CaCheTitle = ""
+		CaCheTitle = title
+
 		if v, ok := IsExist(title); ok {
 			if v.Id != 0 {
 				Movie = v
@@ -178,12 +194,11 @@ func Run(addr string) {
 		} else {
 			down0Query := htmlElement.DOM.Find("#lin1k0")
 			down1Query := htmlElement.DOM.Find("#lin1k1")
-			titleQuery := htmlElement.DOM.Find(".row > h2")
 			var (
 				mysqlDB           = stock.ActionMysql.Db
 				video0DownLoad, _ = down0Query.Attr("value")
 				video1DownLoad, _ = down1Query.Attr("value")
-				title             = titleQuery.Text()
+				title             = CaCheTitle
 				htmlURL           = htmlElement.Request.URL.String()
 				menu              = htmlElement.DOM.Find(".cat_pos_l > a:nth-last-child(2)").Text()
 			)
