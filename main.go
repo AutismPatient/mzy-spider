@@ -16,7 +16,7 @@ import (
 )
 
 var (
-	IsUPDATEREADY = true  //是否更新密钥,仅用于调试模式
+	IsUPDATEREADY = false //是否更新密钥,仅用于调试模式
 	Mode          = false // debug or release
 )
 

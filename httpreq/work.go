@@ -349,7 +349,7 @@ func DownloadVideoByIDS(resp http.ResponseWriter, movies string) {
 	rows.Close()
 
 	if len(ids) > 0 {
-		str := fmt.Sprintf("UPDATE movie_info SET is_down=1 WHERE id IN(%s)", strings.Join(ids, ","))
+		str := fmt.Sprintf("UPDATE movie_info SET is_down=1,down_date=%d WHERE id IN(%s)", time.Now().Unix(), strings.Join(ids, ","))
 		ret, err := mysqlDB.Exec(str)
 		if err != nil {
 			panic(err.Error())
@@ -357,6 +357,7 @@ func DownloadVideoByIDS(resp http.ResponseWriter, movies string) {
 		if _, ok := ret.RowsAffected(); ok != nil {
 			log.Println("[写入数据库失败]:", ok.Error())
 		}
+
 	}
 
 	until.Json(resp, task)

@@ -67,7 +67,13 @@ func (c *VideoDownloadController) Search(r *gin.Context) {
 	if search != "" {
 		where = where + fmt.Sprintf(" AND MATCH(title,menu) AGAINST('*%s*'IN BOOLEAN MODE)", search)
 	}
-	rows, err := action.Query("SELECT id,thunder_url,title,html_url,menu FROM movie_info WHERE is_down=?"+where+" ORDER BY dateline DESC LIMIT ?,?", isDown, offset, 15)
+	var orderBy = "dateline"
+	if isDown == 1 {
+		orderBy = "down_date"
+	}
+	var str = fmt.Sprintf("SELECT id,thunder_url,title,html_url,menu FROM movie_info WHERE is_down=%d%s ORDER BY %s DESC LIMIT %d,%d", isDown, where, orderBy, offset, 15)
+	fmt.Println(str)
+	rows, err := action.Query(str)
 	if err != nil && err != sql.ErrNoRows {
 		panic(err)
 	}
