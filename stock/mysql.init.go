@@ -19,7 +19,7 @@ func init() {
 	ActionMysql.newMysqlConn()
 }
 func (m *Mysql) newMysqlConn() {
-	var source = fmt.Sprintf("root:123@tcp(127.0.0.1:3306)/movie")
+	var source = fmt.Sprintf("root:qazwsxedcR178@tcp(127.0.0.1:3306)/movie")
 	db, err := sql.Open("mysql", source)
 	if err != nil {
 		panic(err)

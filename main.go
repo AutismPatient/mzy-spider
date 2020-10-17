@@ -16,7 +16,7 @@ import (
 )
 
 var (
-	IsUPDATEREADY = false //是否更新密钥,仅用于调试模式
+	IsUPDATEREADY = true  //是否更新密钥,仅用于调试模式
 	Mode          = false // debug or release
 )
 
@@ -129,10 +129,10 @@ func main() {
 	}
 	// 磁盘资源
 	server.Static("/static", "html")
-	server.Static("/D", "D:/视频资源")
-	server.Static("/C", "C:/视频资源")
-	server.Static("/E", "E:/视频资源")
-	server.Static("/F", "F:/视频资源")
+	server.Static("/D", until.D)
+	server.Static("/C", until.C)
+	server.Static("/E", until.E)
+	server.Static("/F", until.F)
 
 	srv := &http.Server{
 		Addr:           ":" + httpreq.ConfigValue["端口"],
@@ -142,6 +142,7 @@ func main() {
 		MaxHeaderBytes: 1 << 20,
 		IdleTimeout:    8 * time.Second,
 	}
+	fmt.Println("The application runs on " + fmt.Sprintf("http://localhost:%s", httpreq.ConfigValue["端口"]))
 	srv.ListenAndServe()
 }
 
