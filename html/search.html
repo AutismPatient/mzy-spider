@@ -231,8 +231,12 @@
             success: function (res) {
                 var arr = [];
                 for (var i = 0; i < res.length; i++) {
+                    var script = res[i].download_url;
+                    if(res[i].is_down != 0){
+                        script = "javascript:void(0);"
+                    }
                     var html = "<li class='list-group-item'><div class='checkbox'><label><input type='checkbox' data-id='"
-                        + res[i].id + "' data-url='" + res[i].download_url + "' value='' aria-label='...'></label></div><a class='text-tr video_list' data-name='"+res[i].title+"' href='javascript:void(0);'>" + res[i].title + "  [" + res[i].menu + "]</a></li>"
+                        + res[i].id + "' data-url='" + res[i].download_url + "' value='' aria-label='...'></label></div><a class='text-tr video_list' data-name='"+res[i].title+"' href='"+ script +"'>" + res[i].title + "  [" + res[i].menu + "]</a></li>"
                     arr.push(html);
                 }
                 $("#movie_list").html(arr);

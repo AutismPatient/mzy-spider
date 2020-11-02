@@ -59,6 +59,7 @@ func (c *VideoDownloadController) Search(r *gin.Context) {
 		DownLoadUrl string `json:"download_url"`
 		HtmlPath    string `json:"html_path"`
 		Menu        string `json:"menu"`
+		IsDown      int64  `json:"is_down"`
 	}
 	if page <= 0 {
 		page = 1
@@ -77,7 +78,7 @@ func (c *VideoDownloadController) Search(r *gin.Context) {
 	if err != nil && err != sql.ErrNoRows {
 		panic(err)
 	}
-	var list = []MovieSub{}
+	var list []MovieSub
 	for rows.Next() {
 		l := MovieSub{}
 		err = rows.Scan(&l.Id, &l.DownLoadUrl, &l.Title, &l.HtmlPath, &l.Menu)
@@ -85,6 +86,7 @@ func (c *VideoDownloadController) Search(r *gin.Context) {
 			log.Println(err.Error())
 			continue
 		}
+		l.IsDown = isDown
 		list = append(list, l)
 	}
 	rows.Close()
