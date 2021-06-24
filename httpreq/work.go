@@ -42,7 +42,7 @@ func init() {
 	}
 }
 
-// 猫咪视频资源(所有)
+// Run 猫咪视频资源(所有)
 func Run(addr string) {
 	if addr == "" {
 		panic(errors.New("string empty"))
@@ -231,7 +231,7 @@ func Run(addr string) {
 	c.Visit(addr)
 }
 
-//  检测
+// IsExist 检测
 func IsExist(title string) (model.MovieInfo, bool) {
 	var (
 		movie   model.MovieInfo
@@ -258,7 +258,7 @@ func containsKey(str string) bool {
 	return false
 }
 
-// 批量下载迅雷X todo 2020年3月31日20:37:51
+// DownloadVideo 批量下载迅雷X todo 2020年3月31日20:37:51
 func DownloadVideo(resp http.ResponseWriter, PageSize int64, menu, search string) {
 	if PageSize == 0 {
 		PageSize = 5
@@ -312,7 +312,7 @@ func DownloadVideo(resp http.ResponseWriter, PageSize int64, menu, search string
 	until.Json(resp, task)
 }
 
-// 检索批量下载
+// DownloadVideoByIDS 检索批量下载
 func DownloadVideoByIDS(resp http.ResponseWriter, movies string) {
 	var (
 		mysqlDB = stock.ActionMysql.Db
@@ -346,7 +346,7 @@ func DownloadVideoByIDS(resp http.ResponseWriter, movies string) {
 		ids = append(ids, strconv.Itoa(int(id)))
 		task.Tasks = append(task.Tasks, m)
 	}
-	rows.Close()
+	_ = rows.Close()
 
 	if len(ids) > 0 {
 		str := fmt.Sprintf("UPDATE movie_info SET is_down=1,down_date=%d WHERE id IN(%s)", time.Now().Unix(), strings.Join(ids, ","))

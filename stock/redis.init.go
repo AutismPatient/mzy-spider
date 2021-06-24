@@ -24,7 +24,7 @@ func (r *MyRedis) newRedisPool() {
 			redis.DialReadTimeout(10*time.Second),
 			redis.DialWriteTimeout(20*time.Second),
 			redis.DialDatabase(2),
-			redis.DialPassword("123"),
+			redis.DialPassword("123456"),
 			redis.DialKeepAlive(30*time.Second),
 		)
 	}

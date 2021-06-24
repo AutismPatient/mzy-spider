@@ -13,13 +13,15 @@ type Mysql struct {
 
 var (
 	ActionMysql = &Mysql{}
+	//PassWord = "!Mngsy4f6O,?0sj"
+	PassWord = "123456"
 )
 
 func init() {
 	ActionMysql.newMysqlConn()
 }
 func (m *Mysql) newMysqlConn() {
-	var source = fmt.Sprintf("root:qazwsxedcR178@tcp(127.0.0.1:3306)/movie")
+	var source = fmt.Sprintf("root:%s@tcp(127.0.0.1:3306)/movie", PassWord)
 	db, err := sql.Open("mysql", source)
 	if err != nil {
 		panic(err)
