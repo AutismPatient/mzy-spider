@@ -46,6 +46,11 @@ func (r *MyRedis) Do(commandName string, args ...interface{}) (reply interface{}
 		return nil, errors.New("error: pool is null")
 	}
 	conn := r.pool.Get()
-	defer conn.Close()
+	defer func(conn redis.Conn) {
+		err := conn.Close()
+		if err != nil {
+			return
+		}
+	}(conn)
 	return conn.Do(commandName, args...)
 }

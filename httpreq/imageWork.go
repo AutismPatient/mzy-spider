@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/axgle/mahonia"
 	"github.com/gocolly/colly"
+	"github.com/gomodule/redigo/redis"
 	"io/ioutil"
 	"log"
 	"mzy-spider/stock"
@@ -15,12 +16,15 @@ import (
 )
 
 var (
-	base   = "http://www.mmdouk.com/"
-	url    = "http://www.mmdouk.com/forumdisplay.php?fid=59" // 网友自拍板块
-	mkdir  = "D:/学习资料/"
-	enc    = mahonia.NewEncoder("gbk") // 解码器
-	client = http.Client{
-		Timeout: 30 * time.Second,
+	base            = "http://www.mmdouk.com/"
+	url             = "http://www.mmdouk.com/forumdisplay.php?fid=59" // 网友自拍板块
+	page            = 225
+	mkdir           = "D:/学习资料/"
+	PageRedisMkdir  = "page_href_list:"
+	ImageRedisMkdir = "images_list:"
+	enc             = mahonia.NewEncoder("gbk") // 解码器
+	client          = http.Client{
+		Timeout: 15 * time.Second,
 	}
 	syncMap map[string]string
 	mysqlDB = stock.ActionMysql.Db
@@ -57,9 +61,12 @@ func RunWork() {
 	c.OnRequest(ffHeader)
 	imageColly.OnRequest(ffHeader)
 	c.OnResponse(func(response *colly.Response) {
-		for i := 1; i <= 225; i++ {
-			fmt.Printf("已成功连接到站点，正在获取数据，当前页：%d \n", i)
-			imageColly.Visit(fmt.Sprintf("%s&page=%d", url, i))
+		for i := 1; i <= page; i++ { // todo 多线程 2021年6月25日14:12:14
+			f := func(i int) {
+				fmt.Printf("已成功连接到站点，正在获取数据，当前页：%d \n", i)
+				imageColly.Visit(fmt.Sprintf("%s&page=%d", url, i))
+			}
+			f(i)
 		}
 	})
 
@@ -82,15 +89,10 @@ func RunWork() {
 		cf := func() {
 			if exist, _ := until.PathExists(mkdir + title); !exist {
 				err := os.Mkdir(mkdir+title, os.ModePerm)
+				_, err = stock.Redis.Do("set", PageRedisMkdir+href, mkdir+title)
+
 				if err != nil {
 					print(err.Error())
-				}
-				ret, err := mysqlDB.Exec("INSERT image_list SET href = ?,path = ?", href, mkdir+title)
-				if err != nil {
-					panic(err)
-				}
-				if v, ok := ret.RowsAffected(); ok != nil || v <= 0 {
-					log.Println("[写入数据库失败]:", ok.Error())
 				}
 			}
 		}
@@ -101,17 +103,29 @@ func RunWork() {
 	})
 
 	detailColly.OnResponse(func(response *colly.Response) {
-		var (
-			l    = response.Request.URL.String()
-			path = ""
-		)
-		_ = mysqlDB.QueryRow("select `path` from  image_list where href = ?", l).Scan(&path)
-		response.Ctx.Put("mkdir", path)
+		//var (
+		//	l    = response.Request.URL.String()
+		//	path = ""
+		//)
+		//_ = mysqlDB.QueryRow("select `path` from  image_list where href = ?", l).Scan(&path)
+		//response.Ctx.Put("mkdir", path)
 	})
 
 	detailColly.OnHTML(".t_msgfont > img", func(element *colly.HTMLElement) {
-		var src = element.Attr("src")
-		var path = element.Response.Ctx.Get("mkdir")
+		var (
+			src  = element.Attr("src")
+			skip = false
+			path = element.Response.Request.URL.String() // todo 2021年6月25日14:10:38
+		)
+
+		mkdir, _ := redis.String(stock.Redis.Do("get", PageRedisMkdir+path))
+
+		_, err := redis.String(stock.Redis.Do("get", ImageRedisMkdir+src))
+
+		if err != nil && err == redis.ErrNil {
+			skip = true
+		}
+
 		request, mr := http.NewRequest("GET", src, nil)
 		if mr != nil {
 			fmt.Println("http error：" + mr.Error())
@@ -119,17 +133,29 @@ func RunWork() {
 		response, err := client.Do(request)
 		if err != nil {
 			log.Println(err.Error())
-		} else {
-			time := time.Now().Unix()
-			var name = strconv.Itoa(int(time)) + until.RandSeq(4) + ".jpg"
-			f, err := os.Create(path + "/" + name)
+		} else if skip {
+			unix := time.Now().Unix()
+			var name = strconv.Itoa(int(unix)) + until.RandSeq(4) + ".jpg"
+			f, err := os.Create(mkdir + "/" + name)
 			if err == nil {
 				content, _ := ioutil.ReadAll(response.Body)
-				f.Write(content)
-				f.Close()
+				_, err := f.Write(content)
+				if err != nil {
+					return
+				}
+				err = f.Close()
+				if err != nil {
+					return
+				}
 			} else {
 				fmt.Println("ERROR:" + err.Error())
 			}
+			_, err = stock.Redis.Do("set", ImageRedisMkdir+src, name)
+
+			if err != nil {
+				print(err.Error())
+			}
+
 			fmt.Println(fmt.Sprintf("Write %s Succeed!", name))
 		}
 	})
