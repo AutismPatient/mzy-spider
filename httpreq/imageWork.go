@@ -83,8 +83,19 @@ func RunWork() {
 		var (
 			title = until.ConvertToString(element.Text, "gbk", "utf-8")
 			href  = base + element.Attr("href")
+			skip  = false
 		)
+		if title == "" || href == "" {
+			return
+		}
+
 		fmt.Println(title + "\n")
+
+		_, err := redis.String(stock.Redis.Do("get", PageRedisMkdir+href))
+
+		if err != nil && err == redis.ErrNil {
+			skip = true
+		}
 
 		cf := func() {
 			if exist, _ := until.PathExists(mkdir + title); !exist {
@@ -99,7 +110,12 @@ func RunWork() {
 
 		cf()
 
-		detailColly.Visit(href)
+		if skip {
+			err = detailColly.Visit(href)
+			if err != nil {
+				return
+			}
+		}
 	})
 
 	detailColly.OnResponse(func(response *colly.Response) {
@@ -114,7 +130,6 @@ func RunWork() {
 	detailColly.OnHTML(".t_msgfont > img", func(element *colly.HTMLElement) {
 		var (
 			src  = element.Attr("src")
-			skip = false
 			path = element.Response.Request.URL.String() // todo 2021年6月25日14:10:38
 		)
 
@@ -122,18 +137,19 @@ func RunWork() {
 
 		_, err := redis.String(stock.Redis.Do("get", ImageRedisMkdir+src))
 
-		if err != nil && err == redis.ErrNil {
-			skip = true
+		if err == nil {
+			return
 		}
 
 		request, mr := http.NewRequest("GET", src, nil)
 		if mr != nil {
 			fmt.Println("http error：" + mr.Error())
+			return
 		}
 		response, err := client.Do(request)
 		if err != nil {
 			log.Println(err.Error())
-		} else if skip {
+		} else {
 			unix := time.Now().Unix()
 			var name = strconv.Itoa(int(unix)) + until.RandSeq(4) + ".jpg"
 			f, err := os.Create(mkdir + "/" + name)
@@ -150,6 +166,12 @@ func RunWork() {
 			} else {
 				fmt.Println("ERROR:" + err.Error())
 			}
+
+			err = response.Body.Close()
+			if err != nil {
+				return
+			}
+
 			_, err = stock.Redis.Do("set", ImageRedisMkdir+src, name)
 
 			if err != nil {
