@@ -18,13 +18,14 @@ import (
 var (
 	base            = "http://www.mmdouk.com/"
 	url             = "http://www.mmdouk.com/forumdisplay.php?fid=59" // 网友自拍板块
-	page            = 225
+	page            = 230
 	mkdir           = "D:/学习资料/"
+	NilMkdir        = "D:/学习资料/散"
 	PageRedisMkdir  = "page_href_list:"
 	ImageRedisMkdir = "images_list:"
 	enc             = mahonia.NewEncoder("gbk") // 解码器
 	client          = http.Client{
-		Timeout: 15 * time.Second,
+		Timeout: 6 * time.Second,
 	}
 	syncMap map[string]string
 	mysqlDB = stock.ActionMysql.Db
@@ -64,7 +65,10 @@ func RunWork() {
 		for i := 1; i <= page; i++ { // todo 多线程 2021年6月25日14:12:14
 			f := func(i int) {
 				fmt.Printf("已成功连接到站点，正在获取数据，当前页：%d \n", i)
-				imageColly.Visit(fmt.Sprintf("%s&page=%d", url, i))
+				err := imageColly.Visit(fmt.Sprintf("%s&page=%d", url, i))
+				if err != nil {
+					return
+				}
 			}
 			f(i)
 		}
@@ -131,11 +135,25 @@ func RunWork() {
 		var (
 			src  = element.Attr("src")
 			path = element.Response.Request.URL.String() // todo 2021年6月25日14:10:38
+			unix = time.Now().Unix()
+			name = strconv.Itoa(int(unix)) + until.RandSeq(4) + ".jpg"
+
+			do = func(name string) {
+				_, err := stock.Redis.Do("set", ImageRedisMkdir+src, name)
+
+				if err != nil {
+					print(err.Error())
+				}
+			}
 		)
 
-		mkdir, _ := redis.String(stock.Redis.Do("get", PageRedisMkdir+path))
+		mkdir, err := redis.String(stock.Redis.Do("get", PageRedisMkdir+path))
 
-		_, err := redis.String(stock.Redis.Do("get", ImageRedisMkdir+src))
+		if err != nil && err == redis.ErrNil {
+			mkdir = NilMkdir
+		}
+
+		_, err = redis.String(stock.Redis.Do("get", ImageRedisMkdir+src))
 
 		if err == nil {
 			return
@@ -150,8 +168,6 @@ func RunWork() {
 		if err != nil {
 			log.Println(err.Error())
 		} else {
-			unix := time.Now().Unix()
-			var name = strconv.Itoa(int(unix)) + until.RandSeq(4) + ".jpg"
 			f, err := os.Create(mkdir + "/" + name)
 			if err == nil {
 				content, _ := ioutil.ReadAll(response.Body)
@@ -172,14 +188,11 @@ func RunWork() {
 				return
 			}
 
-			_, err = stock.Redis.Do("set", ImageRedisMkdir+src, name)
-
-			if err != nil {
-				print(err.Error())
-			}
-
 			fmt.Println(fmt.Sprintf("Write %s Succeed!", name))
 		}
+
+		do(name)
+
 	})
 
 	err := c.Visit(url)
