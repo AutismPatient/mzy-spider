@@ -10,6 +10,7 @@ import (
 	"mzy-spider/stock"
 	"mzy-spider/until"
 	"net/http"
+	url2 "net/url"
 	"os"
 	"strconv"
 	"time"
@@ -25,7 +26,7 @@ var (
 	ImageRedisMkdir = "images_list:"
 	enc             = mahonia.NewEncoder("gbk") // 解码器
 	client          = http.Client{
-		Timeout: 6 * time.Second,
+		Timeout: 12 * time.Second, // 请求图片的超时时间
 	}
 	syncMap map[string]string
 	mysqlDB = stock.ActionMysql.Db
@@ -134,7 +135,17 @@ func RunWork() {
 	detailColly.OnHTML(".t_msgfont > img", func(element *colly.HTMLElement) {
 		var (
 			src  = element.Attr("src")
-			path = element.Response.Request.URL.String() // todo 2021年6月25日14:10:38
+			path = func() (path string) {
+				var (
+					baseURL, _ = url2.Parse(base)
+					URL        = element.Response.Request.URL
+				)
+				path = URL.String()
+				if baseURL.Host != element.Response.Request.URL.Host {
+					path = fmt.Sprintf("%s://%s?%s", URL.Scheme, baseURL.Host+URL.Path, URL.RawQuery)
+				}
+				return path
+			}() // todo 2021年6月25日14:10:38
 			unix = time.Now().Unix()
 			name = strconv.Itoa(int(unix)) + until.RandSeq(4) + ".jpg"
 

@@ -100,7 +100,7 @@ func (c *VideoDownloadController) SearchRun(r *gin.Context) {
 	httpreq.DownloadVideoByIDS(r.Writer, movies)
 }
 
-// 视频播放
+// PlayVideo 视频播放
 func (c *VideoDownloadController) PlayVideo(r *gin.Context) {
 	var (
 		Name = r.Query("title")
