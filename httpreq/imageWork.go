@@ -26,7 +26,7 @@ var (
 	ImageRedisMkdir = "images_list:"
 	enc             = mahonia.NewEncoder("gbk") // 解码器
 	client          = http.Client{
-		Timeout: 12 * time.Second, // 请求图片的超时时间
+		Timeout: 15 * time.Second, // 请求图片的超时时间
 	}
 	syncMap map[string]string
 	mysqlDB = stock.ActionMysql.Db
