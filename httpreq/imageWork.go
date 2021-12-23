@@ -65,15 +65,17 @@ func RunWork() {
 	c.OnRequest(ffHeader)
 	imageColly.OnRequest(ffHeader)
 	c.OnResponse(func(response *colly.Response) {
-		for i := 1; i <= page; i++ { // todo 多线程 2021年6月25日14:12:14
-			f := func(i int) {
-				fmt.Printf("已成功连接到站点，正在获取数据，当前页：%d \n", i)
-				err := imageColly.Visit(fmt.Sprintf("%s&page=%d", url, i))
-				if err != nil {
-					return
-				}
+		f := func(i chan int) {
+			page := <-i
+			fmt.Printf("已成功连接到站点，正在获取数据，当前页：%d \n", page)
+			err := imageColly.Visit(fmt.Sprintf("%s&page=%d", url, page))
+			if err != nil {
+				return
 			}
-			f(i)
+		}
+		cn := make(chan int, page)
+		for i := 1; i <= page; i++ { // todo 多线程 2021年6月25日14:12:14
+			go f(cn)
 		}
 	})
 

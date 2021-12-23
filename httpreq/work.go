@@ -81,7 +81,10 @@ func Run(addr string) {
 				lastIndex  = strings.LastIndex(body, "\";")
 				newURL     = strings.ReplaceAll(body[firstIndex:lastIndex], "window.default_line = \"", "")
 			)
-			videoColly.Visit(newURL + defaultHome)
+			err := videoColly.Visit(newURL + defaultHome)
+			if err != nil {
+				return
+			}
 		}
 	})
 
@@ -94,7 +97,10 @@ func Run(addr string) {
 	videoColly.OnResponse(func(response *colly.Response) {
 		var url = response.Request.URL.String() + "/" + defaultHome
 		if !strings.Contains(url, NewURL) {
-			videoColly.Visit(url)
+			err := videoColly.Visit(url)
+			if err != nil {
+				return
+			}
 		}
 	})
 	// 获取菜单链接
@@ -108,13 +114,19 @@ func Run(addr string) {
 		if !IsNext {
 			for _, v := range VideoMenuList {
 				t := fmt.Sprintf("/shipin/list-%s.html", v)
-				pageSizeColly.Visit(host + t)
+				err := pageSizeColly.Visit(host + t)
+				if err != nil {
+					return
+				}
 			}
 		}
 		IsNext = true
 
 		if containsKey(text) {
-			pageSizeColly.Visit(host + url)
+			err := pageSizeColly.Visit(host + url)
+			if err != nil {
+				return
+			}
 		}
 	})
 	// 获取分页列表
@@ -149,7 +161,10 @@ func Run(addr string) {
 			if v.Id != 0 {
 				Movie = v
 			}
-			videoDetailColly.Visit(htmlElement.Request.URL.Scheme + "://" + htmlElement.Request.URL.Host + url)
+			err := videoDetailColly.Visit(htmlElement.Request.URL.Scheme + "://" + htmlElement.Request.URL.Host + url)
+			if err != nil {
+				return
+			}
 		}
 	})
 	// 短视频专区
@@ -164,7 +179,10 @@ func Run(addr string) {
 			if v.Id != 0 {
 				Movie = v
 			}
-			videoDetailColly.Visit(htmlElement.Request.URL.Scheme + "://" + htmlElement.Request.URL.Host + url)
+			err := videoDetailColly.Visit(htmlElement.Request.URL.Scheme + "://" + htmlElement.Request.URL.Host + url)
+			if err != nil {
+				return
+			}
 		}
 	})
 	// 女优专区链接
@@ -179,7 +197,10 @@ func Run(addr string) {
 			if v.Id != 0 {
 				Movie = v
 			}
-			videoDetailColly.Visit(element.Request.URL.Scheme + "://" + element.Request.URL.Host + url)
+			err := videoDetailColly.Visit(element.Request.URL.Scheme + "://" + element.Request.URL.Host + url)
+			if err != nil {
+				return
+			}
 		}
 	})
 	videoDetailColly.OnRequest(func(request *colly.Request) {
@@ -228,7 +249,10 @@ func Run(addr string) {
 		}
 	})
 
-	c.Visit(addr)
+	err := c.Visit(addr)
+	if err != nil {
+		return
+	}
 }
 
 // IsExist 检测
@@ -296,7 +320,10 @@ func DownloadVideo(resp http.ResponseWriter, PageSize int64, menu, search string
 		ids = append(ids, strconv.Itoa(int(id)))
 		task.Tasks = append(task.Tasks, m)
 	}
-	rows.Close()
+	err = rows.Close()
+	if err != nil {
+		return
+	}
 
 	if len(ids) > 0 {
 		str := fmt.Sprintf("UPDATE movie_info SET is_down=1 WHERE id IN(%s)", strings.Join(ids, ","))
