@@ -78,7 +78,10 @@ func Json(resp http.ResponseWriter, data interface{}) {
 	resp.Header().Add("Access-Control-Allow-Origin", "*")
 	resp.Header().Set("Content-Type", "application/json")
 
-	resp.Write(buffer.Bytes())
+	_, err = resp.Write(buffer.Bytes())
+	if err != nil {
+		return
+	}
 }
 func TimeFormat(time time.Time) string {
 	return time.Format("2006-01-02 15:04:05")
