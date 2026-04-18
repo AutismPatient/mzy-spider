@@ -36,7 +36,7 @@ var (
 爬取 Mimi!Board 论坛 网友自拍 图片
 */
 func init() {
-	RunWork()
+	//RunWork()
 }
 
 func RunWork() {
@@ -65,17 +65,16 @@ func RunWork() {
 	c.OnRequest(ffHeader)
 	imageColly.OnRequest(ffHeader)
 	c.OnResponse(func(response *colly.Response) {
-		f := func(i chan int) {
-			page := <-i
+		f := func(i int) {
+			page := i
 			fmt.Printf("已成功连接到站点，正在获取数据，当前页：%d \n", page)
 			err := imageColly.Visit(fmt.Sprintf("%s&page=%d", url, page))
 			if err != nil {
 				return
 			}
 		}
-		cn := make(chan int, page)
 		for i := 1; i <= page; i++ { // todo 多线程 2021年6月25日14:12:14
-			go f(cn)
+			f(i)
 		}
 	})
 
@@ -108,7 +107,7 @@ func RunWork() {
 
 		cf := func() {
 			if exist, _ := until.PathExists(mkdir + title); !exist {
-				err := os.Mkdir(mkdir+title, os.ModePerm)
+				err := os.MkdirAll(mkdir+title, os.ModePerm)
 				_, err = stock.Redis.Do("set", PageRedisMkdir+href, mkdir+title)
 
 				if err != nil {
